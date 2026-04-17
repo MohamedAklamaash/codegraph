@@ -11,13 +11,19 @@ const SUGGESTIONS = [
 interface Props {
   repoId: string
   onFocusFn: (fn: FileFn) => void
+  switcher: React.ReactNode
 }
 
-export function ChatPanel({ repoId, onFocusFn }: Props) {
+export function ChatPanel({ repoId, onFocusFn, switcher }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setMessages([])
+    setInput('')
+  }, [repoId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -40,7 +46,10 @@ export function ChatPanel({ repoId, onFocusFn }: Props) {
 
   return (
     <div className="chat-panel">
-      <div className="chat-header">Ask about the codebase</div>
+      <div className="chat-header">
+        <span className="chat-header-title">Ask about the codebase</span>
+        {switcher}
+      </div>
       <div className="chat-messages">
         {messages.length === 0 && (
           <div className="chat-empty">

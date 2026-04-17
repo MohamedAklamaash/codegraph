@@ -13,9 +13,10 @@ const STEPS = [
 interface Props {
   repo: Repository
   onReady: (repo: Repository) => void
+  switcher: React.ReactNode
 }
 
-export function Processing({ repo: initial, onReady }: Props) {
+export function Processing({ repo: initial, onReady, switcher }: Props) {
   const [repo, setRepo] = useState(initial)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -40,6 +41,7 @@ export function Processing({ repo: initial, onReady }: Props) {
 
   return (
     <div className="processing">
+      <div className="landing-topbar">{switcher}</div>
       <h2>Analyzing {repo.name}</h2>
       <div className="steps">
         {STEPS.map((step, i) => {

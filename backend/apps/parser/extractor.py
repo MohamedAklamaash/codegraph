@@ -111,8 +111,30 @@ _FUNC_PATTERNS = {
         ),
     ],
     "cpp": [
-        re.compile(r"^[ \t]*(?:[\w:*&<>\[\]]+\s+)+(?P<name>~?\w+)\s*\([^;]*\)\s*(?:const\s*)?\{"),
-        re.compile(r"^[ \t]*(?:[\w:*&<>\[\]]+\s+)+(?P<name>~?\w+)\s*\([^;]*\)\s*(?:const\s*)?$"),
+        # Matches: [qualifiers] return_type [ClassName::]funcName(params) [const] {
+        # Handles: void Foo::bar(...) {  /  std::string baz(...) {  /  Foo::Foo(...) {
+        re.compile(
+            r"^[ \t]*"
+            r"(?:(?:inline|static|virtual|explicit|constexpr|override|friend)\s+)*"  # optional qualifiers
+            r"(?:[\w:*&<>, \t]+?\s+)?"          # optional return type (greedy-lazy)
+            r"(?:[\w]+::)*"                      # optional ClassName:: prefix(es)
+            r"(?P<name>~?[\w]+)\s*"              # function name (with optional ~)
+            r"\([^;{]*\)\s*"                     # params — no semicolons or braces inside
+            r"(?:const\s*)?(?:noexcept\s*)?"     # optional const/noexcept
+            r"(?:override\s*)?(?:->\s*[\w:*& ]+\s*)?"  # optional trailing return
+            r"\{"                                # opening brace on same line
+        ),
+        # Same but brace on next line (two-line match not possible with single regex,
+        # so match the signature line alone and let _find_block_end handle it)
+        re.compile(
+            r"^[ \t]*"
+            r"(?:(?:inline|static|virtual|explicit|constexpr|override|friend)\s+)*"
+            r"(?:[\w:*&<>, \t]+?\s+)?"
+            r"(?:[\w]+::)*"
+            r"(?P<name>~?[\w]+)\s*"
+            r"\([^;{]*\)\s*"
+            r"(?:const\s*)?(?:noexcept\s*)?(?:override\s*)?$"
+        ),
     ],
     "c": [
         re.compile(r"^(?:[\w*]+\s+)+(?P<name>\w+)\s*\([^;]*\)\s*\{"),

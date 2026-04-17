@@ -23,16 +23,11 @@ export default function App() {
     setView(r.status === 'ready' ? 'dashboard' : 'processing')
   }
 
-  return (
-    <>
-      {/* Persistent top-right switcher — visible on all views */}
-      <div className="topbar">
-        <RepoSwitcher current={repo} onSelect={handleSelect} onNew={handleSubmit} />
-      </div>
-
-      {view === 'landing' && <Landing onSubmit={handleSubmit} />}
-      {view === 'processing' && <Processing repo={repo!} onReady={handleReady} />}
-      {view === 'dashboard' && <Dashboard repo={repo!} onReanalyze={() => setView('processing')} />}
-    </>
+  const switcher = (
+    <RepoSwitcher current={repo} onSelect={handleSelect} onNew={handleSubmit} />
   )
+
+  if (view === 'landing') return <Landing onSubmit={handleSubmit} switcher={switcher} />
+  if (view === 'processing') return <Processing repo={repo!} onReady={handleReady} switcher={switcher} />
+  return <Dashboard repo={repo!} onReanalyze={() => setView('processing')} switcher={switcher} />
 }

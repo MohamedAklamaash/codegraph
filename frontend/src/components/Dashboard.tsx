@@ -8,9 +8,10 @@ import { ChatPanel } from './ChatPanel'
 interface Props {
   repo: Repository
   onReanalyze: () => void
+  switcher: React.ReactNode
 }
 
-export function Dashboard({ repo, onReanalyze }: Props) {
+export function Dashboard({ repo, onReanalyze, switcher }: Props) {
   const [selectedFile, setSelectedFile] = useState<RepoFile | null>(null)
 
   const handleReanalyze = async () => {
@@ -28,14 +29,8 @@ export function Dashboard({ repo, onReanalyze }: Props) {
         onSelectFn={() => {}}
         onReanalyze={handleReanalyze}
       />
-      <GraphPanel
-        repoId={repo.id}
-        selectedFile={selectedFile}
-      />
-      <ChatPanel
-        repoId={repo.id}
-        onFocusFn={() => {}}
-      />
+      <GraphPanel repoId={repo.id} selectedFile={selectedFile} />
+      <ChatPanel repoId={repo.id} onFocusFn={() => {}} switcher={switcher} />
     </div>
   )
 }

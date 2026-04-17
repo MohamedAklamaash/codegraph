@@ -4,9 +4,10 @@ import { api } from '../api'
 
 interface Props {
   onSubmit: (repo: Repository) => void
+  switcher: React.ReactNode
 }
 
-export function Landing({ onSubmit }: Props) {
+export function Landing({ onSubmit, switcher }: Props) {
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -27,6 +28,7 @@ export function Landing({ onSubmit }: Props) {
 
   return (
     <div className="landing">
+      <div className="landing-topbar">{switcher}</div>
       <h1>CodeGraph</h1>
       <p>Explore any GitHub repository as a function-level knowledge graph</p>
       <form className="url-form" onSubmit={handleSubmit}>
