@@ -123,26 +123,28 @@ class TraceView(APIView):
 
         MAX_DEPTH = int(request.query_params.get("depth", 4))
 
-        # BFS traversal of CALLS edges — build ordered flat list with depth info
-        visited = set()
-        flow = []  # {id, name, file, depth, parent_id}
-        queue = [(fn.id, 0, None)]  # (node_id, depth, parent_id)
-
-        # Pre-fetch all outgoing edges for this repo into a dict for efficiency
+        # Pre-fetch all outgoing CALLS edges for this repo
         all_edges = FunctionEdge.objects.filter(
             repository_id=repo_id, edge_type="CALLS"
         ).select_related("target__file")
         edges_by_source: dict[int, list] = {}
         for e in all_edges:
-            edges_by_source.setdefault(e.source_id, []).append(e.target)
+            targets = edges_by_source.setdefault(e.source_id, [])
+            # deduplicate targets by id
+            if not any(t.id == e.target_id for t in targets):
+                targets.append(e.target)
+
+        # BFS — mark visited on enqueue to prevent duplicates
+        visited: set[int] = {fn.id}
+        flow = []
+        queue = [(fn.id, 0, None)]
 
         while queue:
             cur_id, depth, parent_id = queue.pop(0)
-            if cur_id in visited or depth > MAX_DEPTH:
+            if depth > MAX_DEPTH:
                 continue
-            visited.add(cur_id)
 
-            if depth > 0:  # skip the root itself
+            if depth > 0:
                 try:
                     node = FunctionNode.objects.select_related("file").get(id=cur_id)
                     flow.append({
@@ -157,6 +159,7 @@ class TraceView(APIView):
 
             for child in edges_by_source.get(cur_id, []):
                 if child.id not in visited:
+                    visited.add(child.id)
                     queue.append((child.id, depth + 1, cur_id))
 
         # LLM explanation using the full call tree context
