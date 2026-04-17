@@ -14,7 +14,7 @@ interface Props {
   switcher: React.ReactNode | null
 }
 
-export function ChatPanel({ repoId, onFocusFn, switcher }: Props) {
+export function ChatPanel({ repoId, onFocusFn }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -46,10 +46,6 @@ export function ChatPanel({ repoId, onFocusFn, switcher }: Props) {
 
   return (
     <div className="chat-panel">
-      <div className="chat-header">
-        <span className="chat-header-title">Ask about the codebase</span>
-        {switcher}
-      </div>
       <div className="chat-messages">
         {messages.length === 0 && (
           <div className="chat-empty">
