@@ -6,22 +6,24 @@ from apps.repos.models import Repository
 
 from .extractor import SUPPORTED_EXTENSIONS, extract_functions
 
+SKIP_DIRS = {
+    ".git", "node_modules", "vendor", "dist", "build", "__pycache__",
+    ".venv", "venv", "env", "target", ".idea", ".vscode",
+}
+
 
 def parse_repository(repo_id, repo_path):
     repo = Repository.objects.get(id=repo_id)
 
-    # Clear old data
     RepoFile.objects.filter(repository=repo).delete()
     FunctionNode.objects.filter(repository=repo).delete()
 
-    # name → FunctionNode (for edge building)
-    func_map = {}  # (file_path, func_name) → FunctionNode
+    func_map = {}  # (rel_path, func_name) -> FunctionNode
 
     for root, dirs, files in os.walk(repo_path):
-        # Skip hidden dirs
-        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
         for filename in files:
-            ext = os.path.splitext(filename)[1]
+            ext = os.path.splitext(filename)[1].lower()
             if ext not in SUPPORTED_EXTENSIONS:
                 continue
 
@@ -47,10 +49,11 @@ def parse_repository(repo_id, repo_path):
                 func_map[(rel_path, fn["name"])] = node
 
     # Build CALLS edges
-    for (rel_path, func_name), node in func_map.items():
+    for (_rel_path, _func_name), node in func_map.items():
         for called_name in node.calls:
-            # Find any function with that name in the repo
-            targets = FunctionNode.objects.filter(repository=repo, name=called_name).exclude(id=node.id)
+            targets = FunctionNode.objects.filter(
+                repository=repo, name=called_name
+            ).exclude(id=node.id)
             for target in targets:
                 FunctionEdge.objects.get_or_create(
                     repository=repo,
