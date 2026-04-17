@@ -796,40 +796,99 @@ body {
 .trace-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
-.trace-loading {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--text-muted);
-  font-size: 13px;
-  padding: 20px 0;
-}
-
-.trace-header {
+.trace-fn-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
-.trace-fn {
+.trace-fn-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.trace-fn-name {
   font-family: monospace;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   color: var(--accent);
 }
 
-.trace-file {
+.trace-fn-file {
   font-size: 11px;
   color: var(--text-muted);
 }
 
-.trace-body {
+.trace-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.trace-section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.trace-no-flow {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.trace-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.trace-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.trace-step-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 16px;
+  text-align: right;
+}
+
+.trace-step-arrow {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.trace-step-name {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--text);
+  flex: 1;
+}
+
+.trace-step-file {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.trace-explanation {
   font-size: 13px;
   line-height: 1.7;
   color: var(--text);

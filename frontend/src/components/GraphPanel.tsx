@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import type { RepoFile, FunctionNode, FunctionEdge } from '../types'
 import { api } from '../api'
+import { TracePanel } from './TracePanel'
 
-type GraphMode = 'full' | 'file'
+type GraphMode = 'full' | 'file' | 'flow'
 
 interface NodeDatum extends d3.SimulationNodeDatum {
   id: string
@@ -42,10 +43,12 @@ export function GraphPanel({ repoId, selectedFile, onNodeSelect }: Props) {
   const [mode, setMode] = useState<GraphMode>('full')
   const [selected, setSelected] = useState<SelectedNode | null>(null)
   const [nodeCount, setNodeCount] = useState(0)
+  const [traceNodeId, setTraceNodeId] = useState<string | null>(null)
+  const [traceNodeName, setTraceNodeName] = useState<string | null>(null)
 
   const draw = useCallback(async (m: GraphMode) => {
     const svg = svgRef.current
-    if (!svg) return
+    if (!svg || m === 'flow') return
 
     const params: { file_id?: number } = {}
     if (m === 'file' && selectedFile) params.file_id = selectedFile.id
@@ -137,6 +140,8 @@ export function GraphPanel({ repoId, selectedFile, onNodeSelect }: Props) {
           })
         setSelected({ node: d, deps })
         onNodeSelect(d.id, d.name)
+        setTraceNodeId(d.id)
+        setTraceNodeName(d.name)
         node.select('circle').attr('stroke', (n: NodeDatum) => n.id === d.id ? '#fff' : 'none').attr('stroke-width', 2)
         link
           .attr('stroke', (e: EdgeDatum) => {
@@ -206,35 +211,46 @@ export function GraphPanel({ repoId, selectedFile, onNodeSelect }: Props) {
             {m === 'full' ? 'Full Graph' : 'File View'}
           </button>
         ))}
-        <span className="graph-count">{nodeCount} nodes</span>
+        <button
+          className={`btn-mode ${mode === 'flow' ? 'active' : ''}`}
+          onClick={() => setMode('flow')}
+        >
+          Flow {traceNodeName ? `· ${traceNodeName}` : ''}
+        </button>
+        {mode !== 'flow' && <span className="graph-count">{nodeCount} nodes</span>}
       </div>
 
-      <svg ref={svgRef} width="100%" height="100%" />
-
-      {selected && (
-        <div className="node-inspector">
-          <div className="inspector-header">
-            <span className="inspector-name">{selected.node.name}()</span>
-            <button className="inspector-close" onClick={() => setSelected(null)}>✕</button>
-          </div>
-          <div className="inspector-row"><span>File</span><code>{selected.node.file}</code></div>
-          <div className="inspector-row"><span>Line</span><code>{selected.node.start_line}</code></div>
-          {selected.node.summary && (
-            <div className="inspector-row"><span>Summary</span><span>{selected.node.summary}</span></div>
-          )}
-          {selected.deps.length > 0 && (
-            <div className="inspector-deps">
-              <div className="inspector-deps-title">Dependencies</div>
-              {selected.deps.map(d => (
-                <div key={d.id} className="inspector-dep">
-                  <span className={`dep-badge ${d.direction}`}>{d.direction === 'calls' ? '→' : '←'}</span>
-                  <span className="dep-name">{d.name}</span>
-                  <span className="dep-file">{d.file.split('/').pop()}</span>
+      {mode === 'flow' ? (
+        <TracePanel repoId={repoId} nodeId={traceNodeId} nodeName={traceNodeName} />
+      ) : (
+        <>
+          <svg ref={svgRef} width="100%" height="100%" />
+          {selected && (
+            <div className="node-inspector">
+              <div className="inspector-header">
+                <span className="inspector-name">{selected.node.name}()</span>
+                <button className="inspector-close" onClick={() => setSelected(null)}>✕</button>
+              </div>
+              <div className="inspector-row"><span>File</span><code>{selected.node.file}</code></div>
+              <div className="inspector-row"><span>Line</span><code>{selected.node.start_line}</code></div>
+              {selected.node.summary && (
+                <div className="inspector-row"><span>Summary</span><span>{selected.node.summary}</span></div>
+              )}
+              {selected.deps.length > 0 && (
+                <div className="inspector-deps">
+                  <div className="inspector-deps-title">Dependencies</div>
+                  {selected.deps.map(d => (
+                    <div key={d.id} className="inspector-dep">
+                      <span className={`dep-badge ${d.direction}`}>{d.direction === 'calls' ? '→' : '←'}</span>
+                      <span className="dep-name">{d.name}</span>
+                      <span className="dep-file">{d.file.split('/').pop()}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   )

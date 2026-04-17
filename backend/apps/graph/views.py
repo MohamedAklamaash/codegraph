@@ -99,31 +99,31 @@ class TraceView(APIView):
         except FunctionNode.DoesNotExist:
             return Response({"error": "not found"}, status=404)
 
-        # Gather callee context (1 hop out)
-        out_edges = FunctionEdge.objects.filter(source=fn).select_related("target__file")
-        callees = [
-            f"{e.target.name} ({e.target.file.path})" for e in out_edges
-        ]
+        # Structured flow: outgoing CALLS edges (depth 1)
+        out_edges = FunctionEdge.objects.filter(source=fn, edge_type="CALLS").select_related("target__file")
+        flow = [{"id": str(e.target.id), "name": e.target.name, "file": e.target.file.path} for e in out_edges]
 
+        # LLM explanation
+        callee_names = [s["name"] for s in flow]
         prompt = (
-            f"You are a code analyst. Explain what the function `{fn.name}` does in plain English.\n"
+            f"Function: {fn.name}\n"
             f"File: {fn.file.path}\n"
-            f"Source:\n```\n{fn.source}\n```\n"
         )
-        if callees:
-            prompt += f"\nIt calls: {', '.join(callees)}\n"
+        if callee_names:
+            prompt += "Calls:\n" + "".join(f"- {n}\n" for n in callee_names) + "\n"
         prompt += (
-            "\nWrite a short, numbered step-by-step trace of what this function does. "
-            "Start with one sentence summary, then list the steps. No code, no markdown headers, plain text only."
+            f"Source:\n```\n{fn.source}\n```\n\n"
+            "Explain in 2-4 lines what this function does in simple terms. "
+            "No markdown, no headers, plain text only."
         )
 
         genai.configure(api_key=settings.GOOGLE_API_KEY)
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content(prompt)
+        response = genai.GenerativeModel("gemini-2.0-flash").generate_content(prompt)
 
         return Response({
             "name": fn.name,
             "file": fn.file.path,
             "start_line": fn.start_line,
-            "trace": response.text,
+            "flow": flow,
+            "explanation": response.text,
         })

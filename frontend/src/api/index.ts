@@ -23,9 +23,13 @@ export const api = {
     http.get<GraphData>(`/graph/${repoId}/`, { params }).then(r => r.data),
 
   traceNode: (repoId: string, nodeId: string) =>
-    http.get<{ name: string; file: string; start_line: number; trace: string }>(
-      `/graph/${repoId}/trace/${nodeId}/`
-    ).then(r => r.data),
+    http.get<{
+      name: string
+      file: string
+      start_line: number
+      flow: { id: string; name: string; file: string }[]
+      explanation: string
+    }>(`/graph/${repoId}/trace/${nodeId}/`).then(r => r.data),
 
   chat: (repoId: string, query: string) =>
     http.post<{ answer: string; functions: FileFn[] }>(`/chat/${repoId}/`, { query }).then(r => r.data),
