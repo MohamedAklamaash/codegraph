@@ -121,21 +121,54 @@ class TraceView(APIView):
         except FunctionNode.DoesNotExist:
             return Response({"error": "not found"}, status=404)
 
-        # Structured flow: outgoing CALLS edges (depth 1)
-        out_edges = FunctionEdge.objects.filter(source=fn, edge_type="CALLS").select_related("target__file")
-        flow = [{"id": str(e.target.id), "name": e.target.name, "file": e.target.file.path} for e in out_edges]
+        MAX_DEPTH = int(request.query_params.get("depth", 4))
 
-        # LLM explanation
+        # BFS traversal of CALLS edges — build ordered flat list with depth info
+        visited = set()
+        flow = []  # {id, name, file, depth, parent_id}
+        queue = [(fn.id, 0, None)]  # (node_id, depth, parent_id)
+
+        # Pre-fetch all outgoing edges for this repo into a dict for efficiency
+        all_edges = FunctionEdge.objects.filter(
+            repository_id=repo_id, edge_type="CALLS"
+        ).select_related("target__file")
+        edges_by_source: dict[int, list] = {}
+        for e in all_edges:
+            edges_by_source.setdefault(e.source_id, []).append(e.target)
+
+        while queue:
+            cur_id, depth, parent_id = queue.pop(0)
+            if cur_id in visited or depth > MAX_DEPTH:
+                continue
+            visited.add(cur_id)
+
+            if depth > 0:  # skip the root itself
+                try:
+                    node = FunctionNode.objects.select_related("file").get(id=cur_id)
+                    flow.append({
+                        "id": str(node.id),
+                        "name": node.name,
+                        "file": node.file.path,
+                        "depth": depth,
+                        "parent_id": str(parent_id) if parent_id else None,
+                    })
+                except FunctionNode.DoesNotExist:
+                    continue
+
+            for child in edges_by_source.get(cur_id, []):
+                if child.id not in visited:
+                    queue.append((child.id, depth + 1, cur_id))
+
+        # LLM explanation using the full call tree context
         callee_names = [s["name"] for s in flow]
         prompt = (
-            f"Function: {fn.name}\n"
-            f"File: {fn.file.path}\n"
+            f"Function: {fn.name}\nFile: {fn.file.path}\n"
         )
         if callee_names:
-            prompt += "Calls:\n" + "".join(f"- {n}\n" for n in callee_names) + "\n"
+            prompt += "Full call chain:\n" + "".join(f"- {n}\n" for n in callee_names[:20]) + "\n"
         prompt += (
-            f"Source:\n```\n{fn.source}\n```\n\n"
-            "Explain in 2-4 lines what this function does in simple terms. "
+            f"Source:\n```\n{fn.source[:800]}\n```\n\n"
+            "Explain in 3-5 lines what this function does and how it orchestrates its call chain. "
             "No markdown, no headers, plain text only."
         )
 

@@ -27,7 +27,7 @@ export const api = {
       name: string
       file: string
       start_line: number
-      flow: { id: string; name: string; file: string }[]
+      flow: { id: string; name: string; file: string; depth: number; parent_id: string | null }[]
       explanation: string
     }>(`/graph/${repoId}/trace/${nodeId}/`).then(r => r.data),
 

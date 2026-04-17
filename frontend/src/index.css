@@ -843,6 +843,19 @@ body {
   letter-spacing: 0.08em;
   color: var(--text-muted);
   margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trace-count {
+  font-size: 10px;
+  background: var(--border);
+  color: var(--text-muted);
+  padding: 1px 6px;
+  border-radius: 10px;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .trace-no-flow {
@@ -872,6 +885,13 @@ body {
   color: var(--text-muted);
   min-width: 16px;
   text-align: right;
+}
+
+.trace-step-depth {
+  color: var(--text-muted);
+  font-size: 11px;
+  width: 10px;
+  flex-shrink: 0;
 }
 
 .trace-step-arrow {

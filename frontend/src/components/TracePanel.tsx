@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 
+interface FlowStep {
+  id: string
+  name: string
+  file: string
+  depth: number
+  parent_id: string | null
+}
+
 interface TraceData {
   name: string
   file: string
   start_line: number
-  flow: { id: string; name: string; file: string }[]
+  flow: FlowStep[]
   explanation: string
 }
 
@@ -27,7 +35,7 @@ export function TracePanel({ repoId, nodeId, nodeName }: Props) {
   }, [repoId, nodeId])
 
   if (!nodeId) {
-    return <div className="trace-empty">Click a node in the graph to trace its flow.</div>
+    return <div className="trace-empty">Click a node in the graph to trace its full execution flow.</div>
   }
 
   if (loading) {
@@ -50,14 +58,22 @@ export function TracePanel({ repoId, nodeId, nodeName }: Props) {
       </div>
 
       <div className="trace-section">
-        <div className="trace-section-title">Flow</div>
+        <div className="trace-section-title">
+          Flow {data.flow.length > 0 && <span className="trace-count">{data.flow.length} steps</span>}
+        </div>
         {data.flow.length === 0 ? (
           <div className="trace-no-flow">No outgoing calls detected.</div>
         ) : (
           <div className="trace-steps">
             {data.flow.map((step, i) => (
-              <div key={step.id} className="trace-step">
-                <span className="trace-step-num">{i + 1}</span>
+              <div
+                key={step.id + i}
+                className="trace-step"
+                style={{ paddingLeft: 10 + (step.depth - 1) * 20 }}
+              >
+                <span className="trace-step-depth" title={`depth ${step.depth}`}>
+                  {step.depth > 1 ? '└' : ''}
+                </span>
                 <span className="trace-step-arrow">→</span>
                 <span className="trace-step-name">{step.name}</span>
                 <span className="trace-step-file">{step.file.split('/').pop()}</span>
