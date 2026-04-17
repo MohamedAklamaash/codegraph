@@ -571,13 +571,58 @@ body {
   flex-shrink: 0;
 }
 
-/* ── Chat ── */
-.chat-panel {
+/* ── Right panel (chat + trace tabs) ── */
+.right-panel {
+  display: flex;
+  flex-direction: column;
   background: var(--surface);
   border-left: 1px solid var(--border);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.right-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  min-height: 44px;
+  flex-shrink: 0;
+}
+
+.right-tab {
+  padding: 6px 14px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  margin-bottom: -1px;
+}
+
+.right-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.right-tab:hover:not(.active) { color: var(--text); }
+
+/* push switcher to the right */
+.right-tabs .repo-switcher { margin-left: auto; }
+
+/* ── Chat panel (no own border — right-panel provides it) ── */
+.chat-panel {
+  background: var(--surface);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
 }
 
 .chat-header {
@@ -738,6 +783,59 @@ body {
   cursor: not-allowed;
 }
 
+
+
+/* ── Trace panel ── */
+.trace-empty {
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.trace-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.trace-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 20px 0;
+}
+
+.trace-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trace-fn {
+  font-family: monospace;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.trace-file {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.trace-body {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

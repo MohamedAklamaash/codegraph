@@ -28,6 +28,7 @@ interface SelectedNode {
 interface Props {
   repoId: string
   selectedFile: RepoFile | null
+  onNodeSelect: (id: string, name: string) => void
 }
 
 const FILE_COLORS = [
@@ -35,7 +36,7 @@ const FILE_COLORS = [
   '#f78166', '#39d353', '#79c0ff', '#ffa657',
 ]
 
-export function GraphPanel({ repoId, selectedFile }: Props) {
+export function GraphPanel({ repoId, selectedFile, onNodeSelect }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const simRef = useRef<d3.Simulation<NodeDatum, EdgeDatum> | null>(null)
   const [mode, setMode] = useState<GraphMode>('full')
@@ -135,6 +136,7 @@ export function GraphPanel({ repoId, selectedFile }: Props) {
             return { id: other.id, name: other.name, file: other.file, direction: src.id === d.id ? 'calls' as const : 'called-by' as const }
           })
         setSelected({ node: d, deps })
+        onNodeSelect(d.id, d.name)
         node.select('circle').attr('stroke', (n: NodeDatum) => n.id === d.id ? '#fff' : 'none').attr('stroke-width', 2)
         link
           .attr('stroke', (e: EdgeDatum) => {
@@ -182,7 +184,7 @@ export function GraphPanel({ repoId, selectedFile }: Props) {
       })
 
     simRef.current = sim
-  }, [repoId, selectedFile])
+  }, [repoId, selectedFile, onNodeSelect])
 
   useEffect(() => { draw(mode) }, [mode, selectedFile, draw])
 

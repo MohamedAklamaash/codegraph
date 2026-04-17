@@ -1,3 +1,5 @@
+import google.generativeai as genai
+from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -87,4 +89,41 @@ class GraphView(APIView):
         return Response({
             "nodes": [serialize_node(n) for n in nodes_qs],
             "edges": [serialize_edge(e) for e in unique_edges],
+        })
+
+
+class TraceView(APIView):
+    def get(self, request, repo_id, node_id):
+        try:
+            fn = FunctionNode.objects.select_related("file").get(id=node_id, repository_id=repo_id)
+        except FunctionNode.DoesNotExist:
+            return Response({"error": "not found"}, status=404)
+
+        # Gather callee context (1 hop out)
+        out_edges = FunctionEdge.objects.filter(source=fn).select_related("target__file")
+        callees = [
+            f"{e.target.name} ({e.target.file.path})" for e in out_edges
+        ]
+
+        prompt = (
+            f"You are a code analyst. Explain what the function `{fn.name}` does in plain English.\n"
+            f"File: {fn.file.path}\n"
+            f"Source:\n```\n{fn.source}\n```\n"
+        )
+        if callees:
+            prompt += f"\nIt calls: {', '.join(callees)}\n"
+        prompt += (
+            "\nWrite a short, numbered step-by-step trace of what this function does. "
+            "Start with one sentence summary, then list the steps. No code, no markdown headers, plain text only."
+        )
+
+        genai.configure(api_key=settings.GOOGLE_API_KEY)
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = model.generate_content(prompt)
+
+        return Response({
+            "name": fn.name,
+            "file": fn.file.path,
+            "start_line": fn.start_line,
+            "trace": response.text,
         })

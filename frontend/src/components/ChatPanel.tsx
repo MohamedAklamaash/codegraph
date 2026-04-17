@@ -11,7 +11,7 @@ const SUGGESTIONS = [
 interface Props {
   repoId: string
   onFocusFn: (fn: FileFn) => void
-  switcher: React.ReactNode
+  switcher: React.ReactNode | null
 }
 
 export function ChatPanel({ repoId, onFocusFn, switcher }: Props) {
