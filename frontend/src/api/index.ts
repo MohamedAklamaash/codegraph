@@ -4,6 +4,9 @@ import type { Repository, RepoFile, FileFn, GraphData } from '../types'
 const http = axios.create({ baseURL: '/api' })
 
 export const api = {
+  listRepos: () =>
+    http.get<Repository[]>('/repos/').then(r => r.data),
+
   submitRepo: (url: string) =>
     http.post<Repository>('/repos/', { url }).then(r => r.data),
 
