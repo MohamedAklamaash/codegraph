@@ -31,8 +31,8 @@ export function ChatPanel({ repoId, onFocusFn }: Props) {
     try {
       const data = await api.chat(repoId, query.trim())
       setMessages(m => [...m, { role: 'assistant', content: data.answer, functions: data.functions }])
-    } catch (err: any) {
-      setMessages(m => [...m, { role: 'assistant', content: err.response?.data?.error || 'Something went wrong.' }])
+    } catch (err: unknown) {
+      setMessages(m => [...m, { role: 'assistant', content: (err as { response?: { data?: { error?: string } } }).response?.data?.error || 'Something went wrong.' }])
     } finally {
       setLoading(false)
     }

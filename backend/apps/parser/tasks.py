@@ -1,8 +1,11 @@
 import os
+
 from apps.files.models import RepoFile
-from apps.graph.models import FunctionNode, FunctionEdge
+from apps.graph.models import FunctionEdge, FunctionNode
 from apps.repos.models import Repository
-from .extractor import extract_functions, get_imports, SUPPORTED_EXTENSIONS
+
+from .extractor import SUPPORTED_EXTENSIONS, extract_functions
+
 
 def parse_repository(repo_id, repo_path):
     repo = Repository.objects.get(id=repo_id)

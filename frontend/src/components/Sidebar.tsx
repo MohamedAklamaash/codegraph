@@ -84,9 +84,12 @@ export function Sidebar({ repoId, repoName, selectedFile, onSelectFile, onSelect
   }, [repoId])
 
   useEffect(() => {
-    if (!selectedFile) { setFunctions([]); return }
+    if (!selectedFile) {
+      setFunctions([])
+      return
+    }
     api.getFileFunctions(repoId, selectedFile.id).then(setFunctions)
-  }, [selectedFile])
+  }, [selectedFile, repoId])
 
   const tree = buildTree(files)
 

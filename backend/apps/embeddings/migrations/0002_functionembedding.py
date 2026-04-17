@@ -1,6 +1,7 @@
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations, models
 from pgvector.django import VectorField
+
 
 class Migration(migrations.Migration):
     dependencies = [

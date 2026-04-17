@@ -19,8 +19,8 @@ export function Landing({ onSubmit }: Props) {
     try {
       const repo = await api.submitRepo(url.trim())
       onSubmit(repo)
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to submit repository')
+    } catch (err: unknown) {
+      setError((err as { response?: { data?: { error?: string } } }).response?.data?.error || 'Failed to submit repository')
       setLoading(false)
     }
   }

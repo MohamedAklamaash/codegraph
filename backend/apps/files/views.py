@@ -1,7 +1,10 @@
-from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import RepoFile
+from rest_framework.views import APIView
+
 from apps.graph.models import FunctionNode
+
+from .models import RepoFile
+
 
 class FileTreeView(APIView):
     def get(self, request, repo_id):

@@ -29,10 +29,11 @@ export function Processing({ repo: initial, onReady }: Props) {
         setRepo(updated)
         if (updated.status === 'ready') { clearInterval(timer.current!); onReady(updated) }
         if (updated.status === 'failed') clearInterval(timer.current!)
-      } catch (_) {}
+      } catch {}
     }, 2000)
 
     return () => clearInterval(timer.current!)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repo.id])
 
   const activeIdx = STEPS.findIndex(s => s.key === repo.status)

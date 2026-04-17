@@ -1,7 +1,9 @@
-from django.db import models
 from django.contrib.postgres.fields import ArrayField
-from apps.repos.models import Repository
+from django.db import models
+
 from apps.files.models import RepoFile
+from apps.repos.models import Repository
+
 
 class FunctionNode(models.Model):
     repository = models.ForeignKey(Repository, on_delete=models.CASCADE, related_name="functions")

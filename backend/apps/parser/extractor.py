@@ -1,5 +1,4 @@
 import ast
-import os
 
 SUPPORTED_EXTENSIONS = {".py": "python"}
 

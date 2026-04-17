@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as d3 from 'd3'
-import type { RepoFile, FileFn, FunctionNode, FunctionEdge } from '../types'
+import type { RepoFile, FunctionNode, FunctionEdge } from '../types'
 import { api } from '../api'
 
 type GraphMode = 'full' | 'file'
@@ -58,7 +58,6 @@ export function GraphPanel({ repoId, selectedFile }: Props) {
 
     setNodeCount(rawNodes.length)
 
-    // Stop previous simulation
     simRef.current?.stop()
     d3.select(svg).selectAll('*').remove()
 
@@ -66,7 +65,6 @@ export function GraphPanel({ repoId, selectedFile }: Props) {
     const H = svg.clientHeight || 600
     const R = 18 // node radius
 
-    // Assign a color per unique file
     const fileIds = [...new Set(rawNodes.map(n => n.file_id))]
     const colorMap = new Map(fileIds.map((fid, i) => [fid, FILE_COLORS[i % FILE_COLORS.length]]))
 
@@ -83,7 +81,6 @@ export function GraphPanel({ repoId, selectedFile }: Props) {
       .filter(e => nodeById.has(e.source as string) && nodeById.has(e.target as string))
       .map(e => ({ ...e, source: nodeById.get(e.source as string)!, target: nodeById.get(e.target as string)! }))
 
-    // Root SVG with zoom
     const root = d3.select(svg)
     const g = root.append('g')
 
@@ -93,7 +90,6 @@ export function GraphPanel({ repoId, selectedFile }: Props) {
         .on('zoom', e => g.attr('transform', e.transform))
     )
 
-    // Arrow marker
     root.append('defs').append('marker')
       .attr('id', 'arrow')
       .attr('viewBox', '0 -5 10 10')
@@ -106,7 +102,6 @@ export function GraphPanel({ repoId, selectedFile }: Props) {
       .attr('d', 'M0,-5L10,0L0,5')
       .attr('fill', '#388bfd')
 
-    // Edges
     const link = g.append('g').selectAll<SVGLineElement, EdgeDatum>('line')
       .data(edges).join('line')
       .attr('stroke', '#388bfd')
@@ -114,7 +109,6 @@ export function GraphPanel({ repoId, selectedFile }: Props) {
       .attr('stroke-opacity', 0.6)
       .attr('marker-end', 'url(#arrow)')
 
-    // Node groups
     const node = g.append('g').selectAll<SVGGElement, NodeDatum>('g')
       .data(nodes).join('g')
       .attr('cursor', 'pointer')
@@ -141,7 +135,6 @@ export function GraphPanel({ repoId, selectedFile }: Props) {
             return { id: other.id, name: other.name, file: other.file, direction: src.id === d.id ? 'calls' as const : 'called-by' as const }
           })
         setSelected({ node: d, deps })
-        // Highlight
         node.select('circle').attr('stroke', (n: NodeDatum) => n.id === d.id ? '#fff' : 'none').attr('stroke-width', 2)
         link
           .attr('stroke', (e: EdgeDatum) => {
@@ -154,21 +147,18 @@ export function GraphPanel({ repoId, selectedFile }: Props) {
           })
       })
 
-    // Dismiss selection on background click
     root.on('click', () => {
       setSelected(null)
       node.select('circle').attr('stroke', 'none')
       link.attr('stroke', '#388bfd').attr('stroke-opacity', 0.6)
     })
 
-    // Circle
     node.append('circle')
       .attr('r', R)
       .attr('fill', (d: NodeDatum) => colorMap.get(d.file_id) ?? '#58a6ff')
       .attr('fill-opacity', (d: NodeDatum) => d.isExternal ? 0.35 : 0.85)
       .attr('stroke', 'none')
 
-    // Label
     node.append('text')
       .text((d: NodeDatum) => d.name.length > 12 ? d.name.slice(0, 11) + '…' : d.name)
       .attr('text-anchor', 'middle')
@@ -177,7 +167,6 @@ export function GraphPanel({ repoId, selectedFile }: Props) {
       .attr('fill', '#c9d1d9')
       .attr('pointer-events', 'none')
 
-    // Simulation
     const sim = d3.forceSimulation<NodeDatum>(nodes)
       .force('link', d3.forceLink<NodeDatum, EdgeDatum>(edges).id(d => d.id).distance(120).strength(0.5))
       .force('charge', d3.forceManyBody().strength(-300))
@@ -195,10 +184,12 @@ export function GraphPanel({ repoId, selectedFile }: Props) {
     simRef.current = sim
   }, [repoId, selectedFile])
 
-  useEffect(() => { draw(mode) }, [mode, selectedFile])
-  useEffect(() => { if (selectedFile) setMode('file') }, [selectedFile])
+  useEffect(() => { draw(mode) }, [mode, selectedFile, draw])
 
-  // Redraw on resize
+  useEffect(() => {
+    if (selectedFile) setMode('file')
+  }, [selectedFile])
+
   useEffect(() => {
     const obs = new ResizeObserver(() => draw(mode))
     if (svgRef.current) obs.observe(svgRef.current)

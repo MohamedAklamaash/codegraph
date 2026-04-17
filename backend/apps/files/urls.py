@@ -1,5 +1,6 @@
 from django.urls import path
-from .views import FileTreeView, FileFunctionsView
+
+from .views import FileFunctionsView, FileTreeView
 
 urlpatterns = [
     path("<uuid:repo_id>/tree/", FileTreeView.as_view()),

@@ -1,6 +1,7 @@
-from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import FunctionNode, FunctionEdge
+from rest_framework.views import APIView
+
+from .models import FunctionEdge, FunctionNode
 
 
 def serialize_node(n):

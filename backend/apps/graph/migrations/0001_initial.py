@@ -1,6 +1,7 @@
-from django.db import migrations, models
-import django.db.models.deletion
 import django.contrib.postgres.fields
+import django.db.models.deletion
+from django.db import migrations, models
+
 
 class Migration(migrations.Migration):
     initial = True

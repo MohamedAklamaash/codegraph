@@ -1,7 +1,10 @@
 from django.db import models
 from pgvector.django import VectorField
+
 from apps.graph.models import FunctionNode
+
 from .client import EMBEDDING_DIM
+
 
 class FunctionEmbedding(models.Model):
     function = models.OneToOneField(FunctionNode, on_delete=models.CASCADE, related_name="embedding")

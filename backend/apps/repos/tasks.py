@@ -1,9 +1,12 @@
 import os
 import shutil
+
 import git
 from celery import shared_task
 from django.conf import settings
+
 from .models import Repository
+
 
 def _set_status(repo, status, msg=""):
     repo.status = status
@@ -12,9 +15,9 @@ def _set_status(repo, status, msg=""):
 
 @shared_task
 def ingest_repository(repo_id):
-    from apps.parser.tasks import parse_repository
-    from apps.graph.tasks import build_graph
     from apps.embeddings.tasks import generate_embeddings
+    from apps.graph.tasks import build_graph
+    from apps.parser.tasks import parse_repository
 
     repo = Repository.objects.get(id=repo_id)
     repo_path = os.path.join(settings.REPOS_DIR, str(repo_id))

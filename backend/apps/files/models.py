@@ -1,5 +1,7 @@
 from django.db import models
+
 from apps.repos.models import Repository
+
 
 class RepoFile(models.Model):
     repository = models.ForeignKey(Repository, on_delete=models.CASCADE, related_name="files")

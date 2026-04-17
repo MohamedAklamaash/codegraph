@@ -1,7 +1,8 @@
 from apps.graph.models import FunctionNode
 from apps.repos.models import Repository
-from .models import FunctionEmbedding
+
 from .client import embed_texts
+from .models import FunctionEmbedding
 
 BATCH_SIZE = 100
 

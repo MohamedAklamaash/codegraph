@@ -1,11 +1,12 @@
 import google.generativeai as genai
 from django.conf import settings
-from rest_framework.views import APIView
+from pgvector.django import L2Distance
 from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from apps.embeddings.client import embed_texts
 from apps.embeddings.models import FunctionEmbedding
-from apps.graph.models import FunctionNode, FunctionEdge
-from pgvector.django import L2Distance
+from apps.graph.models import FunctionEdge, FunctionNode
 
 TOP_K = 8
 

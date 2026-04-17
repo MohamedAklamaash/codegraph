@@ -53,6 +53,11 @@ jobs:
           cd backend
           python manage.py migrate --run-syncdb
 
+      - name: Lint
+        run: |
+          cd backend
+          ruff check .
+
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -69,3 +74,4 @@ jobs:
           cd frontend
           npm ci
           npx tsc --noEmit
+          npx eslint src/
