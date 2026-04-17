@@ -13,10 +13,21 @@ interface Props {
 
 export function Dashboard({ repo, onReanalyze, switcher }: Props) {
   const [selectedFile, setSelectedFile] = useState<RepoFile | null>(null)
+  const [selectedDir, setSelectedDir] = useState<string | null>(null)
 
   const handleReanalyze = async () => {
     await api.submitRepo(repo.url)
     onReanalyze()
+  }
+
+  const handleSelectFile = (f: RepoFile) => {
+    setSelectedFile(f)
+    setSelectedDir(null)
+  }
+
+  const handleSelectDir = (dir: string) => {
+    setSelectedDir(dir)
+    setSelectedFile(null)
   }
 
   return (
@@ -25,13 +36,15 @@ export function Dashboard({ repo, onReanalyze, switcher }: Props) {
         repoId={repo.id}
         repoName={repo.name}
         selectedFile={selectedFile}
-        onSelectFile={setSelectedFile}
+        onSelectFile={handleSelectFile}
+        onSelectDir={handleSelectDir}
         onSelectFn={() => {}}
         onReanalyze={handleReanalyze}
       />
       <GraphPanel
         repoId={repo.id}
         selectedFile={selectedFile}
+        selectedDir={selectedDir}
         onNodeSelect={() => {}}
       />
       <div className="right-panel">

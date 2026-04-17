@@ -19,7 +19,7 @@ export const api = {
   getFileFunctions: (repoId: string, fileId: number) =>
     http.get<FileFn[]>(`/files/${repoId}/files/${fileId}/functions/`).then(r => r.data),
 
-  getGraph: (repoId: string, params?: { file_id?: number; node_id?: string }) =>
+  getGraph: (repoId: string, params?: { file_id?: number; node_id?: string; dir?: string }) =>
     http.get<GraphData>(`/graph/${repoId}/`, { params }).then(r => r.data),
 
   traceNode: (repoId: string, nodeId: string) =>

@@ -33,11 +33,13 @@ interface TreeNodeProps {
   name: string
   node: TreeEntry
   depth: number
+  path: string  // full path to this node
   selectedFile: RepoFile | null
   onSelect: (f: RepoFile) => void
+  onSelectDir: (dir: string) => void
 }
 
-function TreeNode({ name, node, depth, selectedFile, onSelect }: TreeNodeProps) {
+function TreeNode({ name, node, depth, path, selectedFile, onSelect, onSelectDir }: TreeNodeProps) {
   const [open, setOpen] = useState(depth < 2)
   const pl = 16 + depth * 14
 
@@ -56,11 +58,19 @@ function TreeNode({ name, node, depth, selectedFile, onSelect }: TreeNodeProps) 
 
   return (
     <>
-      <div className="tree-node" style={{ paddingLeft: pl }} onClick={() => setOpen(o => !o)}>
+      <div
+        className="tree-node"
+        style={{ paddingLeft: pl }}
+        onClick={() => { setOpen(o => !o); onSelectDir(path) }}
+      >
         <span className="icon">{open ? '▾' : '▸'}</span>{name}
       </div>
       {open && sortEntries(Object.entries(node.__children || {})).map(([k, v]) => (
-        <TreeNode key={k} name={k} node={v} depth={depth + 1} selectedFile={selectedFile} onSelect={onSelect} />
+        <TreeNode
+          key={k} name={k} node={v} depth={depth + 1}
+          path={path ? `${path}/${k}` : k}
+          selectedFile={selectedFile} onSelect={onSelect} onSelectDir={onSelectDir}
+        />
       ))}
     </>
   )
@@ -71,11 +81,12 @@ interface Props {
   repoName: string
   selectedFile: RepoFile | null
   onSelectFile: (f: RepoFile) => void
+  onSelectDir: (dir: string) => void
   onSelectFn: (fn: FileFn) => void
   onReanalyze: () => void
 }
 
-export function Sidebar({ repoId, repoName, selectedFile, onSelectFile, onSelectFn, onReanalyze }: Props) {
+export function Sidebar({ repoId, repoName, selectedFile, onSelectFile, onSelectDir, onSelectFn, onReanalyze }: Props) {
   const [files, setFiles] = useState<RepoFile[]>([])
   const [functions, setFunctions] = useState<FileFn[]>([])
 
@@ -101,7 +112,10 @@ export function Sidebar({ repoId, repoName, selectedFile, onSelectFile, onSelect
       </div>
       <div className="file-tree">
         {sortEntries(Object.entries(tree)).map(([k, v]) => (
-          <TreeNode key={k} name={k} node={v} depth={0} selectedFile={selectedFile} onSelect={onSelectFile} />
+          <TreeNode
+            key={k} name={k} node={v} depth={0} path={k}
+            selectedFile={selectedFile} onSelect={onSelectFile} onSelectDir={onSelectDir}
+          />
         ))}
       </div>
       {functions.length > 0 && (

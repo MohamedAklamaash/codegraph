@@ -29,6 +29,7 @@ def serialize_edge(e):
 class GraphView(APIView):
     def get(self, request, repo_id):
         file_id = request.query_params.get("file_id")
+        dir_prefix = request.query_params.get("dir")  # e.g. "src/auth"
         node_id = request.query_params.get("node_id")
 
         if node_id:
@@ -39,34 +40,53 @@ class GraphView(APIView):
             for e in out_edges + in_edges:
                 center_ids.add(e.source_id)
                 center_ids.add(e.target_id)
-            nodes_qs = FunctionNode.objects.filter(id__in=center_ids).select_related("file")
+            nodes_qs = list(FunctionNode.objects.filter(id__in=center_ids).select_related("file"))
             all_edges = out_edges + in_edges
 
         elif file_id:
-            # File view: all functions in file + cross-file neighbors reachable via edges
+            # File view: functions in file + cross-file neighbors
             file_nodes = list(
                 FunctionNode.objects.filter(repository_id=repo_id, file_id=file_id).select_related("file")
             )
             file_node_ids = {n.id for n in file_nodes}
-
-            # All edges where source OR target is in this file
             out_edges = list(FunctionEdge.objects.filter(source_id__in=file_node_ids))
             in_edges = list(FunctionEdge.objects.filter(target_id__in=file_node_ids))
             all_edges = out_edges + in_edges
-
-            # Collect neighbor ids from other files
             neighbor_ids = set()
             for e in all_edges:
                 if e.source_id not in file_node_ids:
                     neighbor_ids.add(e.source_id)
                 if e.target_id not in file_node_ids:
                     neighbor_ids.add(e.target_id)
-
             neighbor_nodes = list(
                 FunctionNode.objects.filter(id__in=neighbor_ids).select_related("file")
             ) if neighbor_ids else []
-
             nodes_qs = file_nodes + neighbor_nodes
+
+        elif dir_prefix:
+            # Directory view: all functions in files whose path starts with dir_prefix
+            from apps.files.models import RepoFile
+            dir_files = RepoFile.objects.filter(
+                repository_id=repo_id, path__startswith=dir_prefix + "/"
+            )
+            dir_file_ids = set(dir_files.values_list("id", flat=True))
+            dir_nodes = list(
+                FunctionNode.objects.filter(repository_id=repo_id, file_id__in=dir_file_ids).select_related("file")
+            )
+            dir_node_ids = {n.id for n in dir_nodes}
+            out_edges = list(FunctionEdge.objects.filter(source_id__in=dir_node_ids))
+            in_edges = list(FunctionEdge.objects.filter(target_id__in=dir_node_ids))
+            all_edges = out_edges + in_edges
+            neighbor_ids = set()
+            for e in all_edges:
+                if e.source_id not in dir_node_ids:
+                    neighbor_ids.add(e.source_id)
+                if e.target_id not in dir_node_ids:
+                    neighbor_ids.add(e.target_id)
+            neighbor_nodes = list(
+                FunctionNode.objects.filter(id__in=neighbor_ids).select_related("file")
+            ) if neighbor_ids else []
+            nodes_qs = dir_nodes + neighbor_nodes
 
         else:
             # Full graph
@@ -75,7 +95,9 @@ class GraphView(APIView):
             )
             node_ids = {n.id for n in nodes_qs}
             all_edges = list(
-                FunctionEdge.objects.filter(repository_id=repo_id, source_id__in=node_ids, target_id__in=node_ids)
+                FunctionEdge.objects.filter(
+                    repository_id=repo_id, source_id__in=node_ids, target_id__in=node_ids
+                )
             )
 
         # Deduplicate edges

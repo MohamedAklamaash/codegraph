@@ -4,7 +4,7 @@ import type { RepoFile, FunctionNode, FunctionEdge } from '../types'
 import { api } from '../api'
 import { TracePanel } from './TracePanel'
 
-type GraphMode = 'full' | 'file' | 'flow'
+type GraphMode = 'full' | 'file' | 'dir' | 'flow'
 
 interface NodeDatum extends d3.SimulationNodeDatum {
   id: string
@@ -29,6 +29,7 @@ interface SelectedNode {
 interface Props {
   repoId: string
   selectedFile: RepoFile | null
+  selectedDir: string | null
   onNodeSelect: (id: string, name: string) => void
 }
 
@@ -37,7 +38,7 @@ const FILE_COLORS = [
   '#f78166', '#39d353', '#79c0ff', '#ffa657',
 ]
 
-export function GraphPanel({ repoId, selectedFile, onNodeSelect }: Props) {
+export function GraphPanel({ repoId, selectedFile, selectedDir, onNodeSelect }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const simRef = useRef<d3.Simulation<NodeDatum, EdgeDatum> | null>(null)
   const [mode, setMode] = useState<GraphMode>('full')
@@ -50,8 +51,9 @@ export function GraphPanel({ repoId, selectedFile, onNodeSelect }: Props) {
     const svg = svgRef.current
     if (!svg || m === 'flow') return
 
-    const params: { file_id?: number } = {}
+    const params: { file_id?: number; dir?: string } = {}
     if (m === 'file' && selectedFile) params.file_id = selectedFile.id
+    if (m === 'dir' && selectedDir) params.dir = selectedDir
 
     let rawNodes: FunctionNode[], rawEdges: FunctionEdge[]
     try {
@@ -74,7 +76,11 @@ export function GraphPanel({ repoId, selectedFile, onNodeSelect }: Props) {
 
     const nodes: NodeDatum[] = rawNodes.map(n => ({
       ...n,
-      isExternal: m === 'file' && selectedFile ? n.file_id !== selectedFile.id : false,
+      isExternal: m === 'file' && selectedFile
+          ? n.file_id !== selectedFile.id
+          : m === 'dir' && selectedDir
+            ? !n.file.startsWith(selectedDir + '/')
+            : false,
       x: W / 2 + (Math.random() - 0.5) * 200,
       y: H / 2 + (Math.random() - 0.5) * 200,
     }))
@@ -189,13 +195,17 @@ export function GraphPanel({ repoId, selectedFile, onNodeSelect }: Props) {
       })
 
     simRef.current = sim
-  }, [repoId, selectedFile, onNodeSelect])
+  }, [repoId, selectedFile, selectedDir, onNodeSelect])
 
-  useEffect(() => { draw(mode) }, [mode, selectedFile, draw])
+  useEffect(() => { draw(mode) }, [mode, selectedFile, selectedDir, draw])
 
   useEffect(() => {
     if (selectedFile) setMode('file')
   }, [selectedFile])
+
+  useEffect(() => {
+    if (selectedDir) setMode('dir')
+  }, [selectedDir])
 
   useEffect(() => {
     const obs = new ResizeObserver(() => draw(mode))
@@ -211,6 +221,11 @@ export function GraphPanel({ repoId, selectedFile, onNodeSelect }: Props) {
             {m === 'full' ? 'Full Graph' : 'File View'}
           </button>
         ))}
+        {selectedDir && (
+          <button className={`btn-mode ${mode === 'dir' ? 'active' : ''}`} onClick={() => setMode('dir')}>
+            Dir View
+          </button>
+        )}
         <button
           className={`btn-mode ${mode === 'flow' ? 'active' : ''}`}
           onClick={() => setMode('flow')}
