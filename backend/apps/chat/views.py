@@ -16,10 +16,8 @@ class ChatView(APIView):
         if not query:
             return Response({"error": "query required"}, status=400)
 
-        # 1. Embed query
         query_vec = embed_texts([query])[0]
 
-        # 2. Semantic search
         hits = (
             FunctionEmbedding.objects
             .filter(function__repository_id=repo_id)
@@ -28,20 +26,17 @@ class ChatView(APIView):
         )
         seed_ids = [h.function_id for h in hits]
 
-        # 3. Graph expansion (1 hop)
         expanded_ids = set(seed_ids)
         for edge in FunctionEdge.objects.filter(source_id__in=seed_ids):
             expanded_ids.add(edge.target_id)
 
         functions = FunctionNode.objects.filter(id__in=expanded_ids).select_related("file")
 
-        # 4. Build context
         context_parts = []
         for fn in functions:
             context_parts.append(f"# {fn.file.path} :: {fn.name} (line {fn.start_line})\n{fn.source}")
         context = "\n\n".join(context_parts[:12])
 
-        # 5. Gemini answer
         genai.configure(api_key=settings.GOOGLE_API_KEY)
         model = genai.GenerativeModel("gemini-2.0-flash")
         prompt = (

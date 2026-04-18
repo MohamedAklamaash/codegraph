@@ -29,11 +29,10 @@ def serialize_edge(e):
 class GraphView(APIView):
     def get(self, request, repo_id):
         file_id = request.query_params.get("file_id")
-        dir_prefix = request.query_params.get("dir")  # e.g. "src/auth"
+        dir_prefix = request.query_params.get("dir")
         node_id = request.query_params.get("node_id")
 
         if node_id:
-            # Subgraph: node + direct neighbors (cross-file included)
             center_ids = {int(node_id)}
             out_edges = list(FunctionEdge.objects.filter(source_id=node_id))
             in_edges = list(FunctionEdge.objects.filter(target_id=node_id))
@@ -44,7 +43,6 @@ class GraphView(APIView):
             all_edges = out_edges + in_edges
 
         elif file_id:
-            # File view: functions in file + cross-file neighbors
             file_nodes = list(
                 FunctionNode.objects.filter(repository_id=repo_id, file_id=file_id).select_related("file")
             )
@@ -64,7 +62,6 @@ class GraphView(APIView):
             nodes_qs = file_nodes + neighbor_nodes
 
         elif dir_prefix:
-            # Directory view: all functions in files whose path starts with dir_prefix
             from apps.files.models import RepoFile
             dir_files = RepoFile.objects.filter(
                 repository_id=repo_id, path__startswith=dir_prefix + "/"
@@ -89,7 +86,6 @@ class GraphView(APIView):
             nodes_qs = dir_nodes + neighbor_nodes
 
         else:
-            # Full graph
             nodes_qs = list(
                 FunctionNode.objects.filter(repository_id=repo_id).select_related("file")
             )
@@ -162,7 +158,6 @@ class TraceView(APIView):
                     visited.add(child.id)
                     queue.append((child.id, depth + 1, cur_id))
 
-        # LLM explanation using the full call tree context
         callee_names = [s["name"] for s in flow]
         prompt = (
             f"Function: {fn.name}\nFile: {fn.file.path}\n"

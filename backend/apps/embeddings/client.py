@@ -5,7 +5,7 @@ from django.conf import settings
 
 EMBEDDING_MODEL = "models/gemini-embedding-001"
 EMBEDDING_DIM = 3072
-MAX_WORKERS = 20  # parallel requests; stay within Gemini rate limits
+MAX_WORKERS = 20
 
 
 def _embed_one(text: str) -> list[float]:

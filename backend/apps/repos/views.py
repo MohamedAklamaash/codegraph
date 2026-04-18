@@ -16,7 +16,6 @@ class RepositoryView(APIView):
         repo, created = Repository.objects.get_or_create(url=url, defaults={"name": name})
 
         if not created:
-            # Re-analyze: reset status
             repo.status = "pending"
             repo.status_message = ""
             repo.save(update_fields=["status", "status_message"])

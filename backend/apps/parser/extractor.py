@@ -20,10 +20,6 @@ SUPPORTED_EXTENSIONS = {
     ".kts": "kotlin",
 }
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 def _read(file_path):
     with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
         return f.read()
@@ -43,11 +39,6 @@ def _find_block_end(lines, start_idx, open_ch="{", close_ch="}"):
 def _call_names(source, pattern):
     """Extract called function names from source using a regex pattern."""
     return list(set(re.findall(pattern, source)))
-
-
-# ---------------------------------------------------------------------------
-# Python (AST — precise)
-# ---------------------------------------------------------------------------
 
 def _extract_python(file_path):
     source = _read(file_path)

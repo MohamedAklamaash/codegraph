@@ -9,7 +9,6 @@ from .models import RepoFile
 class FileTreeView(APIView):
     def get(self, request, repo_id):
         files = RepoFile.objects.filter(repository_id=repo_id).values("id", "path", "language")
-        # Build tree structure
         tree = {}
         for f in files:
             parts = f["path"].split("/")

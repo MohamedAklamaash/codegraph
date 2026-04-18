@@ -11,7 +11,6 @@ SKIP_DIRS = {
     ".venv", "venv", "env", "target", ".idea", ".vscode",
 }
 
-# Common stdlib/framework method names — skip cross-file edge creation for these
 _NOISE_CALLS = {
     "add", "remove", "get", "set", "put", "delete", "update", "init",
     "start", "stop", "run", "close", "open", "read", "write", "print",
@@ -60,7 +59,6 @@ def parse_repository(repo_id, repo_path):
                 )
                 func_map[(rel_path, fn["name"])] = node
 
-    # Build CALLS edges — prefer same-directory matches, skip noise names
     for (rel_path, _func_name), node in func_map.items():
         src_dir = os.path.dirname(rel_path)
         for called_name in node.calls:
@@ -73,7 +71,6 @@ def parse_repository(repo_id, repo_path):
             if not targets:
                 continue
 
-            # Prefer targets in the same directory; fall back to all if none found there
             same_dir = [t for t in targets if os.path.dirname(t.file.path) == src_dir]
             chosen = same_dir if same_dir else list(targets)
 

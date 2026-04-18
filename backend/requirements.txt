@@ -3,7 +3,7 @@ djangorestframework==3.15.1
 django-cors-headers==4.3.1
 celery==5.3.6
 redis==5.0.3
-psycopg2-binary==2.9.9
+psycopg[binary]
 pgvector==0.2.5
 gitpython==3.1.43
 google-generativeai==0.7.2
