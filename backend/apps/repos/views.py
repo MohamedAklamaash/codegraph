@@ -9,8 +9,8 @@ from rest_framework.views import APIView
 from apps.auth_github.crypto import decrypt
 from apps.auth_github.models import GitHubIdentity
 
-from ._view_helpers import get_user_repo_or_404, normalize_or_400
-from .models import RepoStatus, Repository, RepositoryAccess
+from ._view_helpers import get_user_repo_or_404_response, normalize_or_400
+from .models import Repository, RepositoryAccess, RepoStatus
 from .serializers import RepositorySerializer
 from .tasks import ingest_repository
 from .utils import parse_github_owner_repo as _parse_github_owner_repo
@@ -153,7 +153,6 @@ def _can_grant_access(user, repo: Repository):
 
     token, identity = _get_github_token(user)
 
-    # If we don't yet know whether the repo is private, probe to find out.
     if repo.is_private is None:
         probe = _probe_github(owner, name, token=token if token else None)
         if probe["status"] == 0:
@@ -183,11 +182,9 @@ def _can_grant_access(user, repo: Repository):
             # 403, 5xx, etc — fail closed.
             return False, "github_unreachable"
 
-    # Now `repo.is_private` is known (True/False) for this request.
     if repo.is_private is False:
         return True, "public_url"
 
-    # Private github repo. Require an authed probe returning 200.
     if not token:
         return False, "no_access"
     authed = _probe_github(owner, name, token=token)
@@ -257,7 +254,7 @@ class RepositoryView(APIView):
 
     def get(self, request, repo_id=None):
         if repo_id:
-            repo, err = get_user_repo_or_404(request.user, repo_id)
+            repo, err = get_user_repo_or_404_response(request.user, repo_id)
             if err is not None:
                 return err
             return Response(RepositorySerializer(repo).data)

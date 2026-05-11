@@ -143,7 +143,6 @@ class GraphView(APIView):
                 )
             )
 
-        # Deduplicate edges
         seen = set()
         unique_edges = []
         for e in all_edges:
@@ -175,14 +174,12 @@ class TraceView(APIView):
                 {"error": "invalid_param", "detail": "depth"}, status=400
             )
 
-        # Pre-fetch all outgoing CALLS edges for this repo
         all_edges = FunctionEdge.objects.filter(
             repository_id=repo_id, edge_type="CALLS"
         ).select_related("target__file")
         edges_by_source: dict[int, list] = {}
         for e in all_edges:
             targets = edges_by_source.setdefault(e.source_id, [])
-            # deduplicate targets by id
             if not any(t.id == e.target_id for t in targets):
                 targets.append(e.target)
 
