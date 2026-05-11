@@ -30,6 +30,7 @@ export function Processing({ repo: initial, onReady, switcher }: Props) {
         const updated = await api.getRepo(repo.id)
         setRepo(updated)
         if (updated.status === 'failed') clearInterval(timer.current!)
+        if (updated.status === 'ready') clearInterval(timer.current!)
       } catch {}
     }, 2000)
 
@@ -37,7 +38,9 @@ export function Processing({ repo: initial, onReady, switcher }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repo.id, repo.status])
 
-  const activeIdx = REPO_STATUSES.findIndex(s => s.key === repo.status)
+  const activeIdx = repo.status === 'pending'
+    ? 0
+    : REPO_STATUSES.findIndex(s => s.key === repo.status)
 
   return (
     <div className="processing">
@@ -48,6 +51,7 @@ export function Processing({ repo: initial, onReady, switcher }: Props) {
           let cls = ''
           if (repo.status === 'failed' && i === activeIdx) cls = 'error'
           else if (i < activeIdx || repo.status === 'ready') cls = 'done'
+          else if (i === 0 && (repo.status === 'pending' || repo.status === 'cloning')) cls = 'active'
           else if (i === activeIdx) cls = 'active'
           return (
             <div key={step.key} className={`step ${cls}`}>
