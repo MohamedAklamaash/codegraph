@@ -4,21 +4,25 @@ from django.conf import settings
 from django.db import models
 
 
-class Repository(models.Model):
-    STATUS = [
-        ("pending", "Pending"),
-        ("cloning", "Cloning"),
-        ("parsing", "Parsing"),
-        ("graphing", "Graphing"),
-        ("embedding", "Embedding"),
-        ("ready", "Ready"),
-        ("failed", "Failed"),
-    ]
+class RepoStatus(models.TextChoices):
+    # Mirror these keys in frontend/src/constants/repoStatus.ts when adding states.
+    PENDING = "pending", "Pending"
+    CLONING = "cloning", "Cloning"
+    PARSING = "parsing", "Parsing"
+    EMBEDDING = "embedding", "Embedding"
+    READY = "ready", "Ready"
+    FAILED = "failed", "Failed"
 
+
+class Repository(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     url = models.URLField(unique=True)
     name = models.CharField(max_length=255)
-    status = models.CharField(max_length=20, choices=STATUS, default="pending")
+    status = models.CharField(
+        max_length=20,
+        choices=RepoStatus.choices,
+        default=RepoStatus.PENDING,
+    )
     status_message = models.TextField(blank=True)
     first_ingested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

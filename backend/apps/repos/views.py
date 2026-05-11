@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from apps.auth_github.crypto import decrypt
 from apps.auth_github.models import GitHubIdentity
 
-from .models import Repository, RepositoryAccess
+from .models import RepoStatus, Repository, RepositoryAccess
 from .serializers import RepositorySerializer
 from .tasks import ingest_repository
 from .utils import parse_github_owner_repo as _parse_github_owner_repo
@@ -245,10 +245,10 @@ class RepositoryView(APIView):
             defaults={"role": "owner", "source": source},
         )
 
-        should_ingest = created or repo.status == "failed"
+        should_ingest = created or repo.status == RepoStatus.FAILED
         if should_ingest:
             if not created:
-                repo.status = "pending"
+                repo.status = RepoStatus.PENDING
                 repo.status_message = ""
                 repo.save(update_fields=["status", "status_message", "updated_at"])
             ingest_repository.delay(str(repo.id), str(request.user.id))

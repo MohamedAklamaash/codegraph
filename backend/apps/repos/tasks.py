@@ -8,7 +8,7 @@ import requests
 from celery import shared_task
 from django.conf import settings
 
-from .models import Repository
+from .models import RepoStatus, Repository
 from .utils import parse_github_owner_repo as _parse_github_owner_repo
 
 logger = logging.getLogger(__name__)
@@ -136,7 +136,7 @@ def ingest_repository(repo_id, user_id=None):
         clone_url = repo.url
 
     try:
-        _set_status(repo, "cloning", "Cloning repo...")
+        _set_status(repo, RepoStatus.CLONING, "Cloning repo...")
         if os.path.exists(repo_path):
             shutil.rmtree(repo_path)
         try:
@@ -150,17 +150,17 @@ def ingest_repository(repo_id, user_id=None):
                 identity.needs_reauth = True
                 identity.save(update_fields=["needs_reauth", "updated_at"])
             msg = _redact(e, token)
-            _set_status(repo, "failed", msg)
+            _set_status(repo, RepoStatus.FAILED, msg)
             logger.warning("Clone failed for repo %s: %s", repo_id, msg)
             return
 
-        _set_status(repo, "parsing", "Parsing and building graph...")
+        _set_status(repo, RepoStatus.PARSING, "Parsing and building graph...")
         parse_repository(repo_id, repo_path)
 
-        _set_status(repo, "embedding", "Generating embeddings...")
+        _set_status(repo, RepoStatus.EMBEDDING, "Generating embeddings...")
         generate_embeddings(repo_id)
 
-        _set_status(repo, "ready", "Done")
+        _set_status(repo, RepoStatus.READY, "Done")
 
     except Exception as e:
         # Outer guard: catch broader-than-GitCommandError failures and
@@ -168,7 +168,7 @@ def ingest_repository(repo_id, user_id=None):
         # Without this, Celery may serialize locals (including `clone_url`
         # and the original exception's stderr) into the task result.
         redacted = _redact(e, token)
-        _set_status(repo, "failed", redacted)
+        _set_status(repo, RepoStatus.FAILED, redacted)
         raise RuntimeError(redacted) from None
     finally:
         # Best-effort drop of in-scope tokenized URL.
