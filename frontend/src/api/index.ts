@@ -1,14 +1,52 @@
 import axios from 'axios'
-import type { Repository, RepoFile, FileFn, GraphData } from '../types'
+import type { Repository, RepoFile, FileFn, GraphData, User, GitHubRepo } from '../types'
 
-const http = axios.create({ baseURL: '/api' })
+// Use axios's native CSRF support: it reads the named cookie and attaches it
+// as the named header on same-origin unsafe requests. Works identically to
+// the manual interceptor we used to maintain, with fewer moving parts.
+const http = axios.create({
+  baseURL: '/api',
+  withCredentials: true,
+  xsrfCookieName: 'csrftoken',
+  xsrfHeaderName: 'X-CSRFToken',
+})
+
+http.interceptors.response.use(
+  r => r,
+  err => {
+    if (err?.response?.status === 401) {
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+    }
+    return Promise.reject(err)
+  },
+)
 
 export const api = {
+  seedCsrf: () =>
+    http.get('/auth/csrf/').then(() => undefined),
+
+  getMe: () =>
+    http.get<User>('/me/').then(r => r.data),
+
+  startGithubLogin: () =>
+    http.get<{ authorize_url: string }>('/auth/github/start/').then(r => {
+      window.location.href = r.data.authorize_url
+    }),
+
+  logout: () =>
+    http.post('/auth/logout/').then(() => undefined),
+
+  listMyGithubRepos: (q?: string, page = 1) =>
+    http.get<GitHubRepo[]>('/github/repos/', { params: { q, page } }).then(r => r.data),
+
   listRepos: () =>
     http.get<Repository[]>('/repos/').then(r => r.data),
 
   submitRepo: (url: string) =>
     http.post<Repository>('/repos/', { url }).then(r => r.data),
+
+  attachRepo: (payload: { repo_id?: string; url?: string }) =>
+    http.post<Repository>('/repos/attach/', payload).then(r => r.data),
 
   getRepo: (id: string) =>
     http.get<Repository>(`/repos/${id}/`).then(r => r.data),

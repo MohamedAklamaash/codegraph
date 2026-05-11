@@ -1,17 +1,23 @@
 import google.generativeai as genai
 from django.conf import settings
 from pgvector.django import L2Distance
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.embeddings.client import embed_texts
 from apps.embeddings.models import FunctionEmbedding
 from apps.graph.models import FunctionEdge, FunctionNode
+from apps.repos.utils import user_has_repo_access
 
 TOP_K = 8
 
 class ChatView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request, repo_id):
+        if not user_has_repo_access(request.user, repo_id):
+            return Response({"error": "not found"}, status=404)
         query = request.data.get("query", "").strip()
         if not query:
             return Response({"error": "query required"}, status=400)
@@ -27,10 +33,17 @@ class ChatView(APIView):
         seed_ids = [h.function_id for h in hits]
 
         expanded_ids = set(seed_ids)
-        for edge in FunctionEdge.objects.filter(source_id__in=seed_ids):
+        # Defense-in-depth: seed_ids are already repo-scoped via the embedding
+        # filter above, but constrain the edge fan-out to this repo as well so
+        # any stray cross-repo edge cannot pull a foreign target into context.
+        for edge in FunctionEdge.objects.filter(
+            source_id__in=seed_ids, repository_id=repo_id
+        ):
             expanded_ids.add(edge.target_id)
 
-        functions = FunctionNode.objects.filter(id__in=expanded_ids).select_related("file")
+        functions = FunctionNode.objects.filter(
+            id__in=expanded_ids, repository_id=repo_id
+        ).select_related("file")
 
         context_parts = []
         for fn in functions:

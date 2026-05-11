@@ -47,3 +47,20 @@ export interface ChatMessage {
   content: string
   functions?: FileFn[]
 }
+
+export interface User {
+  id: number
+  login: string
+  avatar_url: string
+  needs_reauth: boolean
+}
+
+export interface GitHubRepo {
+  id: number
+  name: string
+  full_name: string
+  html_url: string
+  private: boolean
+  pushed_at: string
+  default_branch: string
+}
