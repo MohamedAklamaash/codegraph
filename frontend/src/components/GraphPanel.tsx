@@ -34,8 +34,8 @@ interface Props {
 }
 
 const FILE_COLORS = [
-  '#58a6ff', '#3fb950', '#d29922', '#a371f7',
-  '#f78166', '#39d353', '#79c0ff', '#ffa657',
+  '#d97757', '#7a9b6e', '#e6b450', '#b08968',
+  '#8e7cc3', '#5a8a8a', '#c25450', '#a89b8c',
 ]
 
 export function GraphPanel({ repoId, selectedFile, selectedDir, onNodeSelect }: Props) {
@@ -110,11 +110,11 @@ export function GraphPanel({ repoId, selectedFile, selectedDir, onNodeSelect }: 
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', '#388bfd')
+      .attr('fill', '#d97757')
 
     const link = g.append('g').selectAll<SVGLineElement, EdgeDatum>('line')
       .data(edges).join('line')
-      .attr('stroke', '#388bfd')
+      .attr('stroke', '#d97757')
       .attr('stroke-width', 1.2)
       .attr('stroke-opacity', 0.6)
       .attr('marker-end', 'url(#arrow)')
@@ -148,11 +148,11 @@ export function GraphPanel({ repoId, selectedFile, selectedDir, onNodeSelect }: 
         onNodeSelect(d.id, d.name)
         setTraceNodeId(d.id)
         setTraceNodeName(d.name)
-        node.select('circle').attr('stroke', (n: NodeDatum) => n.id === d.id ? '#fff' : 'none').attr('stroke-width', 2)
+        node.select('circle').attr('stroke', (n: NodeDatum) => n.id === d.id ? '#f0e6dc' : 'none').attr('stroke-width', 2)
         link
           .attr('stroke', (e: EdgeDatum) => {
             const s = (e.source as NodeDatum).id, t = (e.target as NodeDatum).id
-            return s === d.id || t === d.id ? '#fff' : '#388bfd'
+            return s === d.id || t === d.id ? '#f0e6dc' : '#d97757'
           })
           .attr('stroke-opacity', (e: EdgeDatum) => {
             const s = (e.source as NodeDatum).id, t = (e.target as NodeDatum).id
@@ -163,12 +163,12 @@ export function GraphPanel({ repoId, selectedFile, selectedDir, onNodeSelect }: 
     root.on('click', () => {
       setSelected(null)
       node.select('circle').attr('stroke', 'none')
-      link.attr('stroke', '#388bfd').attr('stroke-opacity', 0.6)
+      link.attr('stroke', '#d97757').attr('stroke-opacity', 0.6)
     })
 
     node.append('circle')
       .attr('r', R)
-      .attr('fill', (d: NodeDatum) => colorMap.get(d.file_id) ?? '#58a6ff')
+      .attr('fill', (d: NodeDatum) => colorMap.get(d.file_id) ?? '#d97757')
       .attr('fill-opacity', (d: NodeDatum) => d.isExternal ? 0.35 : 0.85)
       .attr('stroke', 'none')
 
@@ -177,7 +177,7 @@ export function GraphPanel({ repoId, selectedFile, selectedDir, onNodeSelect }: 
       .attr('text-anchor', 'middle')
       .attr('dy', R + 13)
       .attr('font-size', 10)
-      .attr('fill', '#c9d1d9')
+      .attr('fill', '#f0e6dc')
       .attr('pointer-events', 'none')
 
     const sim = d3.forceSimulation<NodeDatum>(nodes)
