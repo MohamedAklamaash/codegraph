@@ -1,9 +1,9 @@
 import axios from 'axios'
 import type { Repository, RepoFile, FileFn, GraphData, User, GitHubRepo } from '../types'
 
-// Use axios's native CSRF support: it reads the named cookie and attaches it
-// as the named header on same-origin unsafe requests. Works identically to
-// the manual interceptor we used to maintain, with fewer moving parts.
+// xsrf* config lets axios read the Django CSRF cookie and attach it as the
+// header on same-origin unsafe requests — required because we use
+// SessionAuthentication, not a token.
 const http = axios.create({
   baseURL: '/api',
   withCredentials: true,

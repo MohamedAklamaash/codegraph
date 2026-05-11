@@ -23,9 +23,7 @@ const Q_DEBOUNCE_MS = 300
 export function GithubRepoPicker({ onAnalyze }: Props) {
   const [repos, setRepos] = useState<GitHubRepo[]>([])
   const [q, setQ] = useState('')
-  // `debouncedQ` is what the data fetch actually keys on; `q` is the live
-  // input value so typing stays snappy. We debounce by 300ms to avoid
-  // hammering the upstream GitHub API on every keystroke.
+  // Debounced separately from `q` so each keystroke doesn't hit GitHub.
   const [debouncedQ, setDebouncedQ] = useState('')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
