@@ -272,6 +272,29 @@ body {
   text-align: center;
 }
 
+.step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 220px;
+}
+
+.step-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.step-description {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.step.done .step-description,
+.step.error .step-description {
+  color: inherit;
+  opacity: 0.75;
+}
+
 .spinner {
   width: 18px;
   height: 18px;
