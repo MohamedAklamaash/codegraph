@@ -260,10 +260,10 @@ class GithubReposView(APIView):
         }
         result = github_get(token, GITHUB_REPOS_URL, params=params)
         if isinstance(result, tuple):
-            key, status = result[0], result[1]
+            key, status, retry_after = result
             r = Response({"error": key}, status=status)
-            if key == "rate_limited" and len(result) > 2 and result[2]:
-                r["Retry-After"] = result[2]
+            if key == "rate_limited" and retry_after:
+                r["Retry-After"] = retry_after
             return r
         resp = result
 

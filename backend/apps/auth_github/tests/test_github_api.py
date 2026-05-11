@@ -170,7 +170,7 @@ class TestGithubGet:
             side_effect=requests.ConnectionError("boom"),
         ):
             result = github_get("tok", "https://api.github.com/user")
-        assert result == ("github_unreachable", 503)
+        assert result == ("github_unreachable", 503, None)
 
     def test_timeout_maps_to_unreachable_503(self):
         with patch(
@@ -178,7 +178,7 @@ class TestGithubGet:
             side_effect=requests.Timeout("slow"),
         ):
             result = github_get("tok", "https://api.github.com/user")
-        assert result == ("github_unreachable", 503)
+        assert result == ("github_unreachable", 503, None)
 
     def test_403_returns_rate_limited_with_retry_after(self):
         resp = _mock_resp(403, headers={"Retry-After": "60"})
@@ -202,20 +202,20 @@ class TestGithubGet:
         resp = _mock_resp(500)
         with patch("apps.auth_github.github_api.requests.get", return_value=resp):
             result = github_get("tok", "https://api.github.com/user")
-        assert result == ("github_error", 502)
+        assert result == ("github_error", 502, None)
 
     def test_502_maps_to_github_error_502(self):
         resp = _mock_resp(502)
         with patch("apps.auth_github.github_api.requests.get", return_value=resp):
             result = github_get("tok", "https://api.github.com/user")
-        assert result == ("github_error", 502)
+        assert result == ("github_error", 502, None)
 
     def test_400_other_4xx_maps_to_github_error_502(self):
         """4xx that isn't 401, 403, 404, or 429 is folded to a generic upstream error."""
         resp = _mock_resp(400)
         with patch("apps.auth_github.github_api.requests.get", return_value=resp):
             result = github_get("tok", "https://api.github.com/user")
-        assert result == ("github_error", 502)
+        assert result == ("github_error", 502, None)
 
     def test_params_are_forwarded(self):
         resp = _mock_resp(200)

@@ -116,7 +116,10 @@ def ingest_repository(repo_id, user_id=None):
             f"https://api.github.com/repos/{owner}/{name}",
             timeout=15,
         )
-        if not isinstance(probe, tuple):
+        if isinstance(probe, tuple):
+            key, _status, _retry = probe
+            logger.info("Repo privacy probe failed for %s: %s", repo_id, key)
+        else:
             if probe.status_code == 200:
                 try:
                     data = probe.json()

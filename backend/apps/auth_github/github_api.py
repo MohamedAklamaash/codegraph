@@ -32,9 +32,17 @@ def decrypt_token_or_reauth(identity):
 def github_get(token, url, params=None, timeout=20):
     """Call GitHub's REST API with standard error mapping.
 
-    Returns either the raw `requests.Response` (on 2xx / non-rate-limit 4xx
-    the caller still wants to inspect) or a `(error_key, http_status)` tuple
-    suitable for the caller to surface as `Response({"error": key}, status=...)`.
+    Returns either the raw `requests.Response` (on 2xx / 401 / 404, where the
+    caller wants to inspect status semantically) or a stable 3-tuple of
+    `(error_key, http_status, retry_after)` for error mappings. `retry_after`
+    is the `Retry-After` header value for `rate_limited` and `None` for every
+    other error key. Callers can destructure unconditionally:
+        key, status, retry_after = result
+
+    Error keys:
+        - ("github_unreachable", 503, None)   — network/timeout failure
+        - ("rate_limited",        503, retry_after) — 403/429
+        - ("github_error",        502, None)  — other 4xx/5xx upstream
     """
     try:
         resp = requests.get(
@@ -48,7 +56,7 @@ def github_get(token, url, params=None, timeout=20):
         )
     except requests.RequestException as e:
         logger.warning("GitHub network error on %s: %s", url, type(e).__name__)
-        return ("github_unreachable", 503)
+        return ("github_unreachable", 503, None)
 
     if resp.status_code in (403, 429):
         return ("rate_limited", 503, resp.headers.get("Retry-After"))
@@ -57,6 +65,6 @@ def github_get(token, url, params=None, timeout=20):
         # 401 and 404 carry semantic meaning the caller handles — bubble the
         # response up. Other 4xx/5xx are folded into a generic upstream error.
         logger.warning("GitHub upstream error %s on %s", resp.status_code, url)
-        return ("github_error", 502)
+        return ("github_error", 502, None)
 
     return resp
