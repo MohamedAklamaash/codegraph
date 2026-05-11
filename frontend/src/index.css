@@ -17,6 +17,10 @@
   --warning: #e6b450;
   --node-bg: #241f1c;
   --node-border: #d97757;
+  /* Terracotta-derived translucent layers — replace stale rgba(88,166,255,*)
+     blue literals. Soft = hover, active = pressed/selected. */
+  --accent-soft: rgba(217, 119, 87, 0.08);
+  --accent-active: rgba(217, 119, 87, 0.12);
 }
 
 body {
@@ -90,8 +94,8 @@ body {
   transition: background 0.15s;
 }
 
-.repo-item:hover { background: rgba(88,166,255,0.08); }
-.repo-item.active { background: rgba(88,166,255,0.12); }
+.repo-item:hover { background: var(--accent-soft); }
+.repo-item.active { background: var(--accent-active); }
 
 .repo-item-dot { font-size: 10px; flex-shrink: 0; }
 
@@ -377,12 +381,12 @@ body {
 }
 
 .tree-node:hover {
-  background: rgba(88, 166, 255, 0.08);
+  background: var(--accent-soft);
   color: var(--text);
 }
 
 .tree-node.selected {
-  background: rgba(88, 166, 255, 0.15);
+  background: rgba(217, 119, 87, 0.15);
   color: var(--accent);
 }
 
@@ -421,7 +425,7 @@ body {
 }
 
 .fn-item:hover {
-  background: rgba(88, 166, 255, 0.08);
+  background: var(--accent-soft);
 }
 
 .fn-item .fn-name {
@@ -482,7 +486,7 @@ body {
 .btn-mode.active {
   border-color: var(--accent);
   color: var(--accent);
-  background: rgba(88, 166, 255, 0.1);
+  background: rgba(217, 119, 87, 0.1);
 }
 
 .btn-mode:hover:not(.active) {
@@ -732,8 +736,8 @@ body {
 }
 
 .msg-user .msg-bubble {
-  background: rgba(88, 166, 255, 0.15);
-  border: 1px solid rgba(88, 166, 255, 0.3);
+  background: rgba(217, 119, 87, 0.15);
+  border: 1px solid rgba(217, 119, 87, 0.3);
   color: var(--text);
 }
 
@@ -753,8 +757,8 @@ body {
 
 .fn-tag {
   padding: 2px 8px;
-  background: rgba(88, 166, 255, 0.1);
-  border: 1px solid rgba(88, 166, 255, 0.2);
+  background: rgba(217, 119, 87, 0.1);
+  border: 1px solid rgba(217, 119, 87, 0.2);
   border-radius: 4px;
   font-size: 11px;
   font-family: monospace;
@@ -763,7 +767,7 @@ body {
 }
 
 .fn-tag:hover {
-  background: rgba(88, 166, 255, 0.2);
+  background: rgba(217, 119, 87, 0.2);
 }
 
 .chat-input-row {
@@ -997,7 +1001,7 @@ body {
 .landing-tabs button.active, .repo-switcher-tabs button.active {
   color: var(--text);
   border-color: var(--accent);
-  background: rgba(88,166,255,0.08);
+  background: var(--accent-active);
 }
 .repo-switcher-tabs { padding: 8px 12px 0; margin: 0; }
 
