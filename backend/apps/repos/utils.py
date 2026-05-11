@@ -6,8 +6,6 @@ view modules under `apps.files`, `apps.graph`, `apps.chat`.
 """
 import re
 
-from rest_framework.exceptions import NotFound
-
 from .models import Repository
 
 
@@ -16,18 +14,6 @@ def user_has_repo_access(user, repo_id) -> bool:
     if user is None or not getattr(user, "is_authenticated", False):
         return False
     return Repository.objects.filter(id=repo_id, accesses__user=user).exists()
-
-
-def get_user_repo_or_404(user, repo_id) -> Repository:
-    """Return the Repository row for ``user``/``repo_id`` or raise NotFound."""
-    repo = (
-        Repository.objects.filter(id=repo_id, accesses__user=user).first()
-        if user is not None and getattr(user, "is_authenticated", False)
-        else None
-    )
-    if not repo:
-        raise NotFound("not found")
-    return repo
 
 
 def parse_github_owner_repo(url: str):
