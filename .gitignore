@@ -41,3 +41,6 @@ htmlcov/
 
 *.tsbuildinfo
 .vite/
+
+*.swp
+package-lock.json
