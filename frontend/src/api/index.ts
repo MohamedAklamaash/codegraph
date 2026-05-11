@@ -14,7 +14,7 @@ const http = axios.create({
 http.interceptors.response.use(
   r => r,
   err => {
-    if (err?.response?.status === 401) {
+    if (err?.response?.status === 401 && !err.response?.data?.needs_reauth) {
       window.dispatchEvent(new CustomEvent('auth:unauthorized'))
     }
     return Promise.reject(err)
