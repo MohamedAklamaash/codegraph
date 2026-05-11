@@ -18,7 +18,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .crypto import decrypt, encrypt
+from .crypto import encrypt
+from .github_api import decrypt_token_or_reauth, get_identity_or_reauth, github_get
 from .models import GitHubIdentity
 
 logger = logging.getLogger(__name__)
@@ -236,26 +237,18 @@ class GithubReposView(APIView):
             page = 1
         page = max(1, min(10, page))
 
-        try:
-            identity = request.user.github_identity
-        except GitHubIdentity.DoesNotExist:
-            return Response({"needs_reauth": True}, status=401)
-
-        if identity.needs_reauth:
-            return Response({"needs_reauth": True}, status=401)
+        identity, err = get_identity_or_reauth(request.user)
+        if err is not None:
+            return err
 
         cache_key = f"gh_repos:{request.user.id}:{page}:{q_cache_key}"
         cached = cache.get(cache_key)
         if cached is not None:
             return Response(cached)
 
-        try:
-            token = decrypt(identity.access_token_enc)
-        except Exception:
-            logger.warning("Failed to decrypt GitHub token for user %s", request.user.id)
-            identity.needs_reauth = True
-            identity.save(update_fields=["needs_reauth", "updated_at"])
-            return Response({"needs_reauth": True}, status=401)
+        token, err = decrypt_token_or_reauth(identity)
+        if err is not None:
+            return err
 
         params = {
             "affiliation": "owner,collaborator,organization_member",
@@ -264,35 +257,19 @@ class GithubReposView(APIView):
             "per_page": 50,
             "page": page,
         }
-        try:
-            resp = requests.get(
-                GITHUB_REPOS_URL,
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Accept": "application/vnd.github+json",
-                },
-                params=params,
-                timeout=20,
-            )
-        except requests.RequestException as e:
-            logger.warning("GitHub /user/repos network error: %s", type(e).__name__)
-            return Response({"error": "github_unreachable"}, status=503)
+        result = github_get(token, GITHUB_REPOS_URL, params=params)
+        if isinstance(result, tuple):
+            key, status = result[0], result[1]
+            r = Response({"error": key}, status=status)
+            if key == "rate_limited" and len(result) > 2 and result[2]:
+                r["Retry-After"] = result[2]
+            return r
+        resp = result
 
         if resp.status_code == 401:
             identity.needs_reauth = True
             identity.save(update_fields=["needs_reauth", "updated_at"])
             return Response({"needs_reauth": True}, status=401)
-
-        if resp.status_code in (403, 429):
-            retry_after = resp.headers.get("Retry-After")
-            r = Response({"error": "rate_limited"}, status=503)
-            if retry_after:
-                r["Retry-After"] = retry_after
-            return r
-
-        if resp.status_code >= 400:
-            logger.warning("GitHub /user/repos returned %s", resp.status_code)
-            return Response({"error": "github_error"}, status=502)
 
         repos = resp.json() or []
         if q:

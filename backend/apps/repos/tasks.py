@@ -4,7 +4,6 @@ import re
 import shutil
 
 import git
-import requests
 from celery import shared_task
 from django.conf import settings
 
@@ -110,25 +109,25 @@ def ingest_repository(repo_id, user_id=None):
     token = _decrypt_token(identity)
 
     if owner and name and token and repo.is_private is None:
-        try:
-            probe = requests.get(
-                f"https://api.github.com/repos/{owner}/{name}",
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Accept": "application/vnd.github+json",
-                },
-                timeout=15,
-            )
+        from apps.auth_github.github_api import github_get
+
+        probe = github_get(
+            token,
+            f"https://api.github.com/repos/{owner}/{name}",
+            timeout=15,
+        )
+        if not isinstance(probe, tuple):
             if probe.status_code == 200:
-                data = probe.json()
-                repo.is_private = bool(data.get("private"))
-                repo.save(update_fields=["is_private", "updated_at"])
+                try:
+                    data = probe.json()
+                    repo.is_private = bool(data.get("private"))
+                    repo.save(update_fields=["is_private", "updated_at"])
+                except ValueError:
+                    pass
             elif probe.status_code == 401 and identity:
                 identity.needs_reauth = True
                 identity.save(update_fields=["needs_reauth", "updated_at"])
                 token = None
-        except Exception as e:
-            logger.warning("Repo probe failed: %s", type(e).__name__)
 
     if repo.is_private and token and owner and name:
         clone_url = f"https://x-access-token:{token}@github.com/{owner}/{name}.git"

@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from apps.auth_github.crypto import decrypt
 from apps.auth_github.models import GitHubIdentity
 
+from ._view_helpers import get_user_repo_or_404, normalize_or_400
 from .models import RepoStatus, Repository, RepositoryAccess
 from .serializers import RepositorySerializer
 from .tasks import ingest_repository
@@ -218,10 +219,9 @@ class RepositoryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        try:
-            normalized = _normalize_url(request.data.get("url", ""))
-        except ValueError as e:
-            return Response({"error": "invalid_url", "detail": str(e)}, status=400)
+        normalized, err = normalize_or_400(request.data.get("url", ""), _normalize_url)
+        if err is not None:
+            return err
         if not normalized:
             return Response({"error": "url required"}, status=400)
 
@@ -257,11 +257,9 @@ class RepositoryView(APIView):
 
     def get(self, request, repo_id=None):
         if repo_id:
-            repo = Repository.objects.filter(
-                id=repo_id, accesses__user=request.user
-            ).first()
-            if not repo:
-                return Response({"error": "not found"}, status=404)
+            repo, err = get_user_repo_or_404(request.user, repo_id)
+            if err is not None:
+                return err
             return Response(RepositorySerializer(repo).data)
         repos = (
             Repository.objects.filter(accesses__user=request.user)
@@ -282,10 +280,9 @@ class RepositoryAttachView(APIView):
         if repo_id:
             repo = Repository.objects.filter(id=repo_id).first()
         elif url:
-            try:
-                normalized = _normalize_url(url)
-            except ValueError as e:
-                return Response({"error": "invalid_url", "detail": str(e)}, status=400)
+            normalized, err = normalize_or_400(url, _normalize_url)
+            if err is not None:
+                return err
             if normalized:
                 repo = Repository.objects.filter(url=normalized).first()
 
