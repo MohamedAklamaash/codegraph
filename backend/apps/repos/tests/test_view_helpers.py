@@ -18,9 +18,8 @@ from apps.repos._view_helpers import (
     get_user_repo_or_404_response,
     normalize_or_400,
 )
-from apps.repos.models import RepoStatus, Repository, RepositoryAccess
+from apps.repos.models import Repository, RepositoryAccess, RepoStatus
 from apps.repos.views import _normalize_url
-
 
 # ---------------------------------------------------------------------------
 # normalize_or_400

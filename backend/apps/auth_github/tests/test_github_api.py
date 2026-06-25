@@ -25,7 +25,6 @@ from apps.auth_github.github_api import (
 )
 from apps.auth_github.models import GitHubIdentity
 
-
 # ---------------------------------------------------------------------------
 # get_identity_or_reauth
 # ---------------------------------------------------------------------------
