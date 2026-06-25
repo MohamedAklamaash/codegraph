@@ -97,7 +97,7 @@ export function GithubRepoPicker({ onAnalyze }: Props) {
         {repos.map(r => (
           <div key={r.id} className="gh-repo-row">
             <div className="gh-repo-info">
-              <span className="gh-repo-name">{r.full_name}</span>
+              <span className="gh-repo-name" title={r.full_name}>{r.name}</span>
               {r.private && <span className="gh-repo-badge">Private</span>}
               <span className="gh-repo-time">{relativeTime(r.pushed_at)}</span>
             </div>
