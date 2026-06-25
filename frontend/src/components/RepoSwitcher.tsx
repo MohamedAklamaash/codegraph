@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import type { Repository } from '../types'
 import { api } from '../api'
 import { GithubRepoPicker } from './GithubRepoPicker'
@@ -73,10 +74,10 @@ export function RepoSwitcher({ current, onSelect, onNew }: Props) {
     onNew(repo)
   }
 
-  const statusDot = (status: Repository['status']) => {
-    if (status === 'ready') return '🟢'
-    if (status === 'failed') return '🔴'
-    return '🟡'
+  const statusClass = (status: Repository['status']) => {
+    if (status === 'ready') return 'ready'
+    if (status === 'failed') return 'failed'
+    return 'pending'
   }
 
   return (
@@ -88,8 +89,15 @@ export function RepoSwitcher({ current, onSelect, onNew }: Props) {
         <span className="repo-switcher-caret">{open ? '▴' : '▾'}</span>
       </button>
 
+      <AnimatePresence>
       {open && (
-        <div className="repo-switcher-dropdown">
+        <motion.div
+          className="repo-switcher-dropdown"
+          initial={{ opacity: 0, y: -8, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -8, scale: 0.98 }}
+          transition={{ duration: 0.16, ease: 'easeOut' }}
+        >
           <div className="repo-switcher-tabs">
             <button className={mode === 'list' ? 'active' : ''} onClick={() => setMode('list')}>My repos</button>
             <button className={mode === 'github' ? 'active' : ''} onClick={() => setMode('github')}>From GitHub</button>
@@ -104,7 +112,7 @@ export function RepoSwitcher({ current, onSelect, onNew }: Props) {
                   className={`repo-item ${current?.id === r.id ? 'active' : ''}`}
                   onClick={() => { onSelect(r); setOpen(false) }}
                 >
-                  <span className="repo-item-dot">{statusDot(r.status)}</span>
+                  <span className={`status-dot ${statusClass(r.status)}`} />
                   <span className="repo-item-name">{r.name}</span>
                   {r.status !== 'ready' && (
                     <span className="repo-item-status">{r.status}</span>
@@ -139,8 +147,9 @@ export function RepoSwitcher({ current, onSelect, onNew }: Props) {
               )}
             </form>
           )}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   )
 }

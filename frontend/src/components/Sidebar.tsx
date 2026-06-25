@@ -107,8 +107,8 @@ export function Sidebar({ repoId, repoName, selectedFile, onSelectFile, onSelect
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h3>{repoName}</h3>
-        <button className="btn-reanalyze" onClick={onReanalyze}>↺ Re-analyze</button>
+        <h3 title={repoName}>Explorer</h3>
+        <button className="btn-reanalyze" onClick={onReanalyze} title="Pull latest & re-analyze">↺ Re-analyze</button>
       </div>
       <div className="file-tree">
         {sortEntries(Object.entries(tree)).map(([k, v]) => (

@@ -33,7 +33,7 @@ export function Landing({ onSubmit, switcher }: Props) {
   return (
     <div className="landing">
       <div className="landing-topbar">{switcher}</div>
-      <h1>CodeGraph</h1>
+      <h1>Code<span>Graph</span></h1>
       <p>Explore any GitHub repository as a function-level knowledge graph</p>
 
       <div className="landing-tabs">

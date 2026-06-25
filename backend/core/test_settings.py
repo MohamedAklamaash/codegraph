@@ -37,6 +37,10 @@ if "google.generativeai" not in sys.modules:
         def generate_content(self, *args, **kwargs):
             class _R:
                 text = ""
+            # In streaming mode the real client yields chunk objects; mirror
+            # that so `for chunk in generate_content(..., stream=True)` works.
+            if kwargs.get("stream"):
+                return iter([_R()])
             return _R()
 
     _genai_stub.configure = _genai_configure
@@ -44,6 +48,24 @@ if "google.generativeai" not in sys.modules:
     _genai_stub.GenerativeModel = _GenerativeModel
     sys.modules["google.generativeai"] = _genai_stub
     sys.modules["google"].generativeai = _genai_stub
+
+if "google.api_core" not in sys.modules:
+    _api_core_pkg = types.ModuleType("google.api_core")
+    _api_core_pkg.__path__ = []
+    _api_core_exc = types.ModuleType("google.api_core.exceptions")
+
+    class _GoogleAPIError(Exception):
+        pass
+
+    _api_core_exc.GoogleAPICallError = _GoogleAPIError
+    _api_core_exc.RetryError = type("RetryError", (Exception,), {})
+    _api_core_exc.ResourceExhausted = type("ResourceExhausted", (_GoogleAPIError,), {})
+    _api_core_exc.ServiceUnavailable = type("ServiceUnavailable", (_GoogleAPIError,), {})
+    _api_core_exc.DeadlineExceeded = type("DeadlineExceeded", (_GoogleAPIError,), {})
+    _api_core_pkg.exceptions = _api_core_exc
+    sys.modules["google.api_core"] = _api_core_pkg
+    sys.modules["google.api_core.exceptions"] = _api_core_exc
+    sys.modules["google"].api_core = _api_core_pkg
 
 
 # --- django.contrib.postgres.fields.ArrayField stub ------------------------

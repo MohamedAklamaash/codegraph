@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import type { Repository } from '../types'
 import { api } from '../api'
 import { REPO_STATUSES } from '../constants/repoStatus'
@@ -14,7 +15,19 @@ interface Props {
 export function Processing({ repo: initial, onReady, switcher }: Props) {
   const [repo, setRepo] = useState(initial)
   const [readyHolding, setReadyHolding] = useState(false)
+  const [retrying, setRetrying] = useState(false)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const retry = async () => {
+    setRetrying(true)
+    try {
+      setRepo(await api.submitRepo(repo.url))
+    } catch {
+      /* keep the failed state; the user can retry again */
+    } finally {
+      setRetrying(false)
+    }
+  }
 
   useEffect(() => {
     if (repo.status === 'failed') return
@@ -54,7 +67,13 @@ export function Processing({ repo: initial, onReady, switcher }: Props) {
           else if (i === 0 && (repo.status === 'pending' || repo.status === 'cloning')) cls = 'active'
           else if (i === activeIdx) cls = 'active'
           return (
-            <div key={step.key} className={`step ${cls}`}>
+            <motion.div
+              key={step.key}
+              className={`step ${cls}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: i * 0.07, ease: 'easeOut' }}
+            >
               <span className="step-icon">
                 {cls === 'done' ? '✓' : cls === 'error' ? '✗' : cls === 'active' ? <span className="spinner" /> : '○'}
               </span>
@@ -62,7 +81,7 @@ export function Processing({ repo: initial, onReady, switcher }: Props) {
                 <div className="step-label">{step.label}</div>
                 <div className="step-description">{step.description}</div>
               </div>
-            </div>
+            </motion.div>
           )
         })}
       </div>
@@ -70,7 +89,12 @@ export function Processing({ repo: initial, onReady, switcher }: Props) {
         <p style={{ color: 'var(--success)', fontSize: 13 }}>Done — opening dashboard…</p>
       )}
       {repo.status === 'failed' && (
-        <p style={{ color: 'var(--error)', fontSize: 13 }}>{repo.status_message}</p>
+        <div className="processing-failed">
+          <p className="processing-error">{repo.status_message}</p>
+          <button className="btn-retry" onClick={retry} disabled={retrying}>
+            {retrying ? 'Retrying…' : 'Retry — pull latest & re-analyze'}
+          </button>
+        </div>
       )}
     </div>
   )
