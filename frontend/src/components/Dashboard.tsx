@@ -33,7 +33,8 @@ export function Dashboard({ repo, onReanalyze, switcher }: Props) {
 
   const toggle = (panel: ImperativePanelHandle | null) => {
     if (!panel) return
-    panel.isCollapsed() ? panel.expand() : panel.collapse()
+    if (panel.isCollapsed()) panel.expand()
+    else panel.collapse()
   }
 
   const handleReanalyze = async () => {

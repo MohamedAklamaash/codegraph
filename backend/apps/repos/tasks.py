@@ -7,7 +7,7 @@ import git
 from celery import shared_task
 from django.conf import settings
 
-from .models import RepoStatus, Repository
+from .models import Repository, RepoStatus
 from .utils import parse_github_owner_repo as _parse_github_owner_repo
 
 logger = logging.getLogger(__name__)
