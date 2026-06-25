@@ -1,5 +1,6 @@
 import google.generativeai as genai
 from django.conf import settings
+from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -7,6 +8,10 @@ from rest_framework.views import APIView
 from apps.repos.utils import user_has_repo_access
 
 from .models import FunctionEdge, FunctionNode
+
+# Dunder/boilerplate functions (__init__, __repr__, …) — name starts and ends
+# with a double underscore. Hidden by default so the graph shows real logic.
+BOILERPLATE = Q(name__startswith="__") & Q(name__endswith="__")
 
 
 def serialize_node(n):
@@ -38,6 +43,10 @@ class GraphView(APIView):
         file_id = request.query_params.get("file_id")
         dir_prefix = request.query_params.get("dir")
         node_id = request.query_params.get("node_id")
+        include_bp = request.query_params.get("include_boilerplate", "").lower() in ("1", "true")
+
+        def visible(qs):
+            return qs if include_bp else qs.exclude(BOILERPLATE)
 
         if node_id:
             # Validate node_id parses and belongs to this repo. A node_id from
@@ -71,7 +80,7 @@ class GraphView(APIView):
 
         elif file_id:
             file_nodes = list(
-                FunctionNode.objects.filter(repository_id=repo_id, file_id=file_id).select_related("file")
+                visible(FunctionNode.objects.filter(repository_id=repo_id, file_id=file_id)).select_related("file")
             )
             file_node_ids = {n.id for n in file_nodes}
             out_edges = list(
@@ -92,9 +101,9 @@ class GraphView(APIView):
                 if e.target_id not in file_node_ids:
                     neighbor_ids.add(e.target_id)
             neighbor_nodes = list(
-                FunctionNode.objects.filter(
+                visible(FunctionNode.objects.filter(
                     id__in=neighbor_ids, repository_id=repo_id
-                ).select_related("file")
+                )).select_related("file")
             ) if neighbor_ids else []
             nodes_qs = file_nodes + neighbor_nodes
 
@@ -105,7 +114,7 @@ class GraphView(APIView):
             )
             dir_file_ids = set(dir_files.values_list("id", flat=True))
             dir_nodes = list(
-                FunctionNode.objects.filter(repository_id=repo_id, file_id__in=dir_file_ids).select_related("file")
+                visible(FunctionNode.objects.filter(repository_id=repo_id, file_id__in=dir_file_ids)).select_related("file")
             )
             dir_node_ids = {n.id for n in dir_nodes}
             out_edges = list(
@@ -126,15 +135,15 @@ class GraphView(APIView):
                 if e.target_id not in dir_node_ids:
                     neighbor_ids.add(e.target_id)
             neighbor_nodes = list(
-                FunctionNode.objects.filter(
+                visible(FunctionNode.objects.filter(
                     id__in=neighbor_ids, repository_id=repo_id
-                ).select_related("file")
+                )).select_related("file")
             ) if neighbor_ids else []
             nodes_qs = dir_nodes + neighbor_nodes
 
         else:
             nodes_qs = list(
-                FunctionNode.objects.filter(repository_id=repo_id).select_related("file")
+                visible(FunctionNode.objects.filter(repository_id=repo_id)).select_related("file")
             )
             node_ids = {n.id for n in nodes_qs}
             all_edges = list(
@@ -143,16 +152,26 @@ class GraphView(APIView):
                 )
             )
 
+        # Drop edges to nodes hidden by the boilerplate filter so no edge dangles.
+        node_id_set = {n.id for n in nodes_qs}
         seen = set()
         unique_edges = []
         for e in all_edges:
-            if e.id not in seen:
-                seen.add(e.id)
-                unique_edges.append(e)
+            if e.id in seen:
+                continue
+            if e.source_id not in node_id_set or e.target_id not in node_id_set:
+                continue
+            seen.add(e.id)
+            unique_edges.append(e)
+
+        hidden = 0 if include_bp else (
+            FunctionNode.objects.filter(repository_id=repo_id).filter(BOILERPLATE).count()
+        )
 
         return Response({
             "nodes": [serialize_node(n) for n in nodes_qs],
             "edges": [serialize_edge(e) for e in unique_edges],
+            "hidden": hidden,
         })
 
 
@@ -225,8 +244,8 @@ class TraceView(APIView):
             "No markdown, no headers, plain text only."
         )
 
-        genai.configure(api_key=settings.GOOGLE_API_KEY)
-        response = genai.GenerativeModel("gemini-2.0-flash").generate_content(prompt)
+        genai.configure(api_key=settings.GOOGLE_API_KEY, transport="rest")
+        response = genai.GenerativeModel("gemini-2.5-flash").generate_content(prompt)
 
         return Response({
             "name": fn.name,
