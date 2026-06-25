@@ -8,7 +8,7 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5435:5432"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U kbuser -d knowledge_base" ]
       interval: 5s
@@ -18,18 +18,18 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6382:6379"
 
   web:
     build: ./backend
     command: >
       sh -c "python manage.py migrate --run-syncdb &&
-             python manage.py runserver 0.0.0.0:8000"
+             python manage.py runserver 0.0.0.0:9002"
     volumes:
       - ./backend:/app
       - repos_data:/repos
     ports:
-      - "8000:8000"
+      - "9002:9002"
     env_file: ./backend/.env
     depends_on:
       db:
@@ -52,8 +52,11 @@ services:
 
   frontend:
     build: ./frontend
+    environment:
+      # Inside the compose network the UI proxies /api to the web service.
+      VITE_API_TARGET: http://web:9002
     ports:
-      - "5174:5173"
+      - "5003:5173"
     depends_on:
       - web
 

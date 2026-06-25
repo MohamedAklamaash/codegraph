@@ -32,6 +32,8 @@ export interface FunctionEdge {
 export interface GraphData {
   nodes: FunctionNode[]
   edges: FunctionEdge[]
+  /** Count of boilerplate (dunder) functions hidden server-side. */
+  hidden?: number
 }
 
 export interface FileFn {
@@ -42,8 +44,35 @@ export interface FileFn {
   summary: string
 }
 
+export interface Citation {
+  id: number
+  /** Graph node id used to focus/center the function in GraphPanel. */
+  node_id: string
+  name: string
+  file: string
+  start_line: number
+  summary: string
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
-  functions?: FileFn[]
+  citations?: Citation[]
+}
+
+export interface User {
+  id: number
+  login: string
+  avatar_url: string
+  needs_reauth: boolean
+}
+
+export interface GitHubRepo {
+  id: number
+  name: string
+  full_name: string
+  html_url: string
+  private: boolean
+  pushed_at: string
+  default_branch: string
 }

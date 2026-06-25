@@ -1,9 +1,17 @@
 import google.generativeai as genai
 from django.conf import settings
+from django.db.models import Q
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.repos.utils import user_has_repo_access
+
 from .models import FunctionEdge, FunctionNode
+
+# Dunder/boilerplate functions (__init__, __repr__, …) — name starts and ends
+# with a double underscore. Hidden by default so the graph shows real logic.
+BOILERPLATE = Q(name__startswith="__") & Q(name__endswith="__")
 
 
 def serialize_node(n):
@@ -27,28 +35,64 @@ def serialize_edge(e):
 
 
 class GraphView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, repo_id):
+        if not user_has_repo_access(request.user, repo_id):
+            return Response({"error": "not found"}, status=404)
         file_id = request.query_params.get("file_id")
         dir_prefix = request.query_params.get("dir")
         node_id = request.query_params.get("node_id")
+        include_bp = request.query_params.get("include_boilerplate", "").lower() in ("1", "true")
+
+        def visible(qs):
+            return qs if include_bp else qs.exclude(BOILERPLATE)
 
         if node_id:
-            center_ids = {int(node_id)}
-            out_edges = list(FunctionEdge.objects.filter(source_id=node_id))
-            in_edges = list(FunctionEdge.objects.filter(target_id=node_id))
+            # Validate node_id parses and belongs to this repo. A node_id from
+            # another repo must 404 even though the caller has access to repo_id.
+            try:
+                center_pk = int(node_id)
+            except (ValueError, TypeError):
+                return Response(
+                    {"error": "invalid_param", "detail": "node_id"}, status=400
+                )
+            try:
+                FunctionNode.objects.get(id=center_pk, repository_id=repo_id)
+            except FunctionNode.DoesNotExist:
+                return Response({"error": "node_not_found"}, status=404)
+            center_ids = {center_pk}
+            out_edges = list(
+                FunctionEdge.objects.filter(source_id=center_pk, repository_id=repo_id)
+            )
+            in_edges = list(
+                FunctionEdge.objects.filter(target_id=center_pk, repository_id=repo_id)
+            )
             for e in out_edges + in_edges:
                 center_ids.add(e.source_id)
                 center_ids.add(e.target_id)
-            nodes_qs = list(FunctionNode.objects.filter(id__in=center_ids).select_related("file"))
+            nodes_qs = list(
+                FunctionNode.objects.filter(
+                    id__in=center_ids, repository_id=repo_id
+                ).select_related("file")
+            )
             all_edges = out_edges + in_edges
 
         elif file_id:
             file_nodes = list(
-                FunctionNode.objects.filter(repository_id=repo_id, file_id=file_id).select_related("file")
+                visible(FunctionNode.objects.filter(repository_id=repo_id, file_id=file_id)).select_related("file")
             )
             file_node_ids = {n.id for n in file_nodes}
-            out_edges = list(FunctionEdge.objects.filter(source_id__in=file_node_ids))
-            in_edges = list(FunctionEdge.objects.filter(target_id__in=file_node_ids))
+            out_edges = list(
+                FunctionEdge.objects.filter(
+                    source_id__in=file_node_ids, repository_id=repo_id
+                )
+            )
+            in_edges = list(
+                FunctionEdge.objects.filter(
+                    target_id__in=file_node_ids, repository_id=repo_id
+                )
+            )
             all_edges = out_edges + in_edges
             neighbor_ids = set()
             for e in all_edges:
@@ -57,7 +101,9 @@ class GraphView(APIView):
                 if e.target_id not in file_node_ids:
                     neighbor_ids.add(e.target_id)
             neighbor_nodes = list(
-                FunctionNode.objects.filter(id__in=neighbor_ids).select_related("file")
+                visible(FunctionNode.objects.filter(
+                    id__in=neighbor_ids, repository_id=repo_id
+                )).select_related("file")
             ) if neighbor_ids else []
             nodes_qs = file_nodes + neighbor_nodes
 
@@ -68,11 +114,19 @@ class GraphView(APIView):
             )
             dir_file_ids = set(dir_files.values_list("id", flat=True))
             dir_nodes = list(
-                FunctionNode.objects.filter(repository_id=repo_id, file_id__in=dir_file_ids).select_related("file")
+                visible(FunctionNode.objects.filter(repository_id=repo_id, file_id__in=dir_file_ids)).select_related("file")
             )
             dir_node_ids = {n.id for n in dir_nodes}
-            out_edges = list(FunctionEdge.objects.filter(source_id__in=dir_node_ids))
-            in_edges = list(FunctionEdge.objects.filter(target_id__in=dir_node_ids))
+            out_edges = list(
+                FunctionEdge.objects.filter(
+                    source_id__in=dir_node_ids, repository_id=repo_id
+                )
+            )
+            in_edges = list(
+                FunctionEdge.objects.filter(
+                    target_id__in=dir_node_ids, repository_id=repo_id
+                )
+            )
             all_edges = out_edges + in_edges
             neighbor_ids = set()
             for e in all_edges:
@@ -81,13 +135,15 @@ class GraphView(APIView):
                 if e.target_id not in dir_node_ids:
                     neighbor_ids.add(e.target_id)
             neighbor_nodes = list(
-                FunctionNode.objects.filter(id__in=neighbor_ids).select_related("file")
+                visible(FunctionNode.objects.filter(
+                    id__in=neighbor_ids, repository_id=repo_id
+                )).select_related("file")
             ) if neighbor_ids else []
             nodes_qs = dir_nodes + neighbor_nodes
 
         else:
             nodes_qs = list(
-                FunctionNode.objects.filter(repository_id=repo_id).select_related("file")
+                visible(FunctionNode.objects.filter(repository_id=repo_id)).select_related("file")
             )
             node_ids = {n.id for n in nodes_qs}
             all_edges = list(
@@ -96,37 +152,53 @@ class GraphView(APIView):
                 )
             )
 
-        # Deduplicate edges
+        # Drop edges to nodes hidden by the boilerplate filter so no edge dangles.
+        node_id_set = {n.id for n in nodes_qs}
         seen = set()
         unique_edges = []
         for e in all_edges:
-            if e.id not in seen:
-                seen.add(e.id)
-                unique_edges.append(e)
+            if e.id in seen:
+                continue
+            if e.source_id not in node_id_set or e.target_id not in node_id_set:
+                continue
+            seen.add(e.id)
+            unique_edges.append(e)
+
+        hidden = 0 if include_bp else (
+            FunctionNode.objects.filter(repository_id=repo_id).filter(BOILERPLATE).count()
+        )
 
         return Response({
             "nodes": [serialize_node(n) for n in nodes_qs],
             "edges": [serialize_edge(e) for e in unique_edges],
+            "hidden": hidden,
         })
 
 
 class TraceView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, repo_id, node_id):
+        if not user_has_repo_access(request.user, repo_id):
+            return Response({"error": "not found"}, status=404)
         try:
             fn = FunctionNode.objects.select_related("file").get(id=node_id, repository_id=repo_id)
         except FunctionNode.DoesNotExist:
             return Response({"error": "not found"}, status=404)
 
-        MAX_DEPTH = int(request.query_params.get("depth", 4))
+        try:
+            MAX_DEPTH = int(request.query_params.get("depth", 4))
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "invalid_param", "detail": "depth"}, status=400
+            )
 
-        # Pre-fetch all outgoing CALLS edges for this repo
         all_edges = FunctionEdge.objects.filter(
             repository_id=repo_id, edge_type="CALLS"
         ).select_related("target__file")
         edges_by_source: dict[int, list] = {}
         for e in all_edges:
             targets = edges_by_source.setdefault(e.source_id, [])
-            # deduplicate targets by id
             if not any(t.id == e.target_id for t in targets):
                 targets.append(e.target)
 
@@ -142,7 +214,9 @@ class TraceView(APIView):
 
             if depth > 0:
                 try:
-                    node = FunctionNode.objects.select_related("file").get(id=cur_id)
+                    node = FunctionNode.objects.select_related("file").get(
+                        id=cur_id, repository_id=repo_id
+                    )
                     flow.append({
                         "id": str(node.id),
                         "name": node.name,
@@ -170,8 +244,8 @@ class TraceView(APIView):
             "No markdown, no headers, plain text only."
         )
 
-        genai.configure(api_key=settings.GOOGLE_API_KEY)
-        response = genai.GenerativeModel("gemini-2.0-flash").generate_content(prompt)
+        genai.configure(api_key=settings.GOOGLE_API_KEY, transport="rest")
+        response = genai.GenerativeModel("gemini-2.5-flash").generate_content(prompt)
 
         return Response({
             "name": fn.name,

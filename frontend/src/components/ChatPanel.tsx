@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ChatMessage, FileFn } from '../types'
-import { api } from '../api'
+import { motion } from 'framer-motion'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import type { ChatMessage } from '../types'
 
 const SUGGESTIONS = [
   'Where is authentication handled?',
@@ -9,39 +11,25 @@ const SUGGESTIONS = [
 ]
 
 interface Props {
-  repoId: string
-  onFocusFn: (fn: FileFn) => void
-  switcher: React.ReactNode | null
+  messages: ChatMessage[]
+  streaming: boolean
+  send: (query: string) => void
+  /** Focus/center a cited function in the graph by its node id. */
+  onCiteNode: (nodeId: string) => void
 }
 
-export function ChatPanel({ repoId, onFocusFn }: Props) {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+export function ChatPanel({ messages, streaming, send, onCiteNode }: Props) {
   const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setMessages([])
-    setInput('')
-  }, [repoId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const send = async (query: string) => {
-    if (!query.trim() || loading) return
+  const submit = (query: string) => {
+    if (!query.trim() || streaming) return
+    send(query)
     setInput('')
-    setMessages(m => [...m, { role: 'user', content: query.trim() }])
-    setLoading(true)
-    try {
-      const data = await api.chat(repoId, query.trim())
-      setMessages(m => [...m, { role: 'assistant', content: data.answer, functions: data.functions }])
-    } catch (err: unknown) {
-      setMessages(m => [...m, { role: 'assistant', content: (err as { response?: { data?: { error?: string } } }).response?.data?.error || 'Something went wrong.' }])
-    } finally {
-      setLoading(false)
-    }
   }
 
   return (
@@ -51,41 +39,63 @@ export function ChatPanel({ repoId, onFocusFn }: Props) {
           <div className="chat-empty">
             <p>Ask anything about this repo</p>
             <ul>
-              {SUGGESTIONS.map(s => <li key={s} onClick={() => send(s)}>{s}</li>)}
+              {SUGGESTIONS.map(s => <li key={s} onClick={() => submit(s)}>{s}</li>)}
             </ul>
           </div>
         )}
-        {messages.map((msg, i) => (
-          <div key={i} className={`msg msg-${msg.role}`}>
-            <div className="msg-bubble">{msg.content}</div>
-            {msg.functions && msg.functions.length > 0 && (
-              <div className="msg-functions">
-                {msg.functions.map(fn => (
-                  <span key={fn.id} className="fn-tag" onClick={() => onFocusFn(fn)}>
-                    {fn.name}
-                  </span>
-                ))}
+        {messages.map((msg, i) => {
+          const isLast = i === messages.length - 1
+          const pending = msg.role === 'assistant' && !msg.content && streaming && isLast
+          return (
+            <motion.div
+              key={i}
+              className={`msg msg-${msg.role}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+            >
+              <div className="msg-bubble">
+                {pending ? (
+                  <span className="msg-pending">Thinking…</span>
+                ) : msg.role === 'assistant' ? (
+                  <div className="md">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                  </div>
+                ) : (
+                  msg.content
+                )}
               </div>
-            )}
-          </div>
-        ))}
-        {loading && (
-          <div className="msg msg-assistant">
-            <div className="msg-bubble" style={{ color: 'var(--text-muted)' }}>Thinking…</div>
-          </div>
-        )}
+
+              {msg.citations && msg.citations.length > 0 && (
+                <div className="msg-functions">
+                  {msg.citations.map(c => (
+                    <button
+                      key={c.id}
+                      className="fn-tag"
+                      title={`${c.file}:${c.start_line}`}
+                      onClick={() => onCiteNode(c.node_id)}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )
+        })}
         <div ref={bottomRef} />
       </div>
+
       <div className="chat-input-row">
         <input
           type="text"
           placeholder="Ask a question…"
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && send(input)}
-          disabled={loading}
+          onKeyDown={e => e.key === 'Enter' && submit(input)}
+          disabled={streaming}
         />
-        <button className="btn-send" onClick={() => send(input)} disabled={loading || !input.trim()}>
+        <button className="btn-send" onClick={() => submit(input)} disabled={streaming || !input.trim()}>
           Send
         </button>
       </div>
